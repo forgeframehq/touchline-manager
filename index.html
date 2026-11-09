@@ -7,11 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="screen-orientation" content="portrait">
-<meta name="theme-color" content="#0b1210">
+<meta name="theme-color" content="#050e09">
 <title>Touchline Manager</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;600&family=Share+Tech+Mono&family=Caveat+Brush&family=Cinzel:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=Share+Tech+Mono&family=Cinzel:wght@600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -36,26 +36,6 @@
 <div id="app"></div>
 <div id="rotate"><svg viewBox="0 0 48 48" width="64" height="64"><rect x="14" y="4" width="20" height="40" rx="4" fill="none" stroke="#fff" stroke-width="3"/><circle cx="24" cy="38" r="2" fill="#fff"/></svg><b>Turn your phone upright</b></div>
 
-<!-- floodlit stadium art used on the title screen -->
-<template id="stadium-art">
-  <svg class="stadium" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-    <defs>
-      <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff8dc" stop-opacity=".95"/><stop offset=".25" stop-color="#ffe9a8" stop-opacity=".45"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient>
-      <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4" stop-opacity=".22"/><stop offset="1" stop-color="#fff3c4" stop-opacity="0"/></linearGradient>
-      <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f6b34"/><stop offset="1" stop-color="#1c4422"/></linearGradient>
-      <pattern id="stripes" width="40" height="300" patternUnits="userSpaceOnUse"><rect width="20" height="300" fill="#ffffff" opacity=".05"/></pattern>
-    </defs>
-    <polygon class="beam" points="38,40 0,300 150,300" fill="url(#beam)"/><polygon class="beam" points="362,40 250,300 400,300" fill="url(#beam)"/>
-    <polygon points="110,62 60,300 200,300" fill="url(#beam)" opacity=".7"/><polygon points="290,62 200,300 340,300" fill="url(#beam)" opacity=".7"/>
-    <path d="M0 170 Q200 120 400 170 V215 H0 Z" fill="#141a26"/><path d="M0 182 Q200 140 400 182 V215 H0 Z" fill="#1b2232"/>
-    <g class="flashes" fill="#ffffff"><circle cx="40" cy="185" r="1"/><circle cx="70" cy="176" r="1"/><circle cx="96" cy="170" r="1"/><circle cx="130" cy="164" r="1"/><circle cx="160" cy="160" r="1"/><circle cx="190" cy="158" r="1"/><circle cx="220" cy="158" r="1"/><circle cx="252" cy="161" r="1"/><circle cx="284" cy="165" r="1"/><circle cx="315" cy="171" r="1"/><circle cx="342" cy="177" r="1"/><circle cx="370" cy="185" r="1"/></g>
-    <polygon points="70,215 330,215 400,300 0,300" fill="url(#grass)"/><polygon points="70,215 330,215 400,300 0,300" fill="url(#stripes)"/>
-    <g fill="none" stroke="#e9f5e6" stroke-opacity=".55" stroke-width="1.2"><polygon points="88,222 312,222 372,296 28,296"/><line x1="200" y1="222" x2="200" y2="296"/><ellipse cx="200" cy="254" rx="34" ry="12"/></g>
-    <g stroke="#2a3140" stroke-width="3"><line x1="38" y1="44" x2="38" y2="190"/><line x1="362" y1="44" x2="362" y2="190"/><line x1="110" y1="66" x2="110" y2="170"/><line x1="290" y1="66" x2="290" y2="170"/></g>
-    <g fill="#e8e6dc"><rect x="26" y="34" width="24" height="10" rx="2"/><rect x="350" y="34" width="24" height="10" rx="2"/><rect x="100" y="57" width="20" height="8" rx="2"/><rect x="280" y="57" width="20" height="8" rx="2"/></g>
-    <circle cx="38" cy="39" r="34" fill="url(#glow)"/><circle cx="362" cy="39" r="34" fill="url(#glow)"/><circle cx="110" cy="61" r="24" fill="url(#glow)"/><circle cx="290" cy="61" r="24" fill="url(#glow)"/>
-  </svg>
-</template>
 
 <script src="js/data.js"></script>
 <script src="js/rng.js"></script>
@@ -68,6 +48,7 @@
 <script src="js/save.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/flags.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/art.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/game.js"></script>

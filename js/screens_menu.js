@@ -11,25 +11,25 @@
     { id: 'rw', name: 'Rest of World', flags: [], countries: [] },
   ];
   const ready = code => !!WORLD.countries[code];
-  const stepHdr = (n, title) => G.titleHeader('New Career', `Step ${n} of 5 · ${title}`);
+  const stepHdr = (n, title, icon) => G.titleHeader(title, `New Career · Step ${n} of 5`, icon || 'flag');
 
   // ================= Title / main menu =================
   Nav.define('title', () => {
     G.theme(null); Sound.crowd(.35);
     const latest = Save.latest(), meta = latest && Save.slots()[latest];
     const b = el('div', 'title-scr');
-    b.innerHTML = document.getElementById('stadium-art').innerHTML + `<div class="title-wrap"><div id="logo"><span class="l1">Touchline</span><span class="l2">Manager</span></div><div class="menu"></div>
+    b.innerHTML = `<div class="title-wrap"><div id="logo"><span class="l1">Touchline</span><span class="l2">Manager</span></div><div class="menu"></div>
       <div class="studio-credit"><img src="assets/ui/studio_mark.png" alt=""><span>A Forge Frame game</span></div></div>`;
     const menu = b.querySelector('.menu');
     const items = [];
-    if (meta) items.push({ label: 'Continue', sub: `${meta.name} · ${G.seasonLabel(meta.season)} · Wk ${meta.week + 1}`, big: true, go: () => loadSlot(latest) });
-    items.push({ label: 'New Career', big: !meta, go: () => Nav.push('nc_region') });
-    items.push({ label: 'Load Career', go: () => Nav.push('load'), disabled: !Object.keys(Save.slots()).length });
-    items.push({ label: 'Achievements', go: () => Nav.push('achievements') });
-    items.push({ label: 'Settings', go: () => Nav.push('settings') });
-    items.push({ label: 'Credits', go: () => Nav.push('credits') });
-    items.forEach((it, i) => { const x = Nav.button(it, 'mi' + (it.big ? ' big' : '')); x.style.setProperty('--d', i * 60 + 'ms'); if (it.disabled) x.disabled = true; menu.appendChild(x); });
-    return { full: true, cls: 'night', body: b };
+    if (meta) items.push({ icon: 'play', label: 'Continue', sub: `${meta.name} · ${G.seasonLabel(meta.season)} · Wk ${meta.week + 1}`, big: true, go: () => loadSlot(latest) });
+    items.push({ icon: 'plus', label: 'New Career', big: !meta, go: () => Nav.push('nc_region') });
+    items.push({ icon: 'save', label: 'Load Career', go: () => Nav.push('load'), disabled: !Object.keys(Save.slots()).length });
+    items.push({ icon: 'trophy', label: 'Achievements', go: () => Nav.push('achievements') });
+    items.push({ icon: 'gear', label: 'Settings', go: () => Nav.push('settings') });
+    items.push({ icon: 'info', label: 'Credits', go: () => Nav.push('credits') });
+    items.forEach((it, i) => { const x = Nav.button(Object.assign({}, it, { sub: null }), 'mi' + (it.big ? ' big' : '')); if (it.sub) x.querySelector('span').insertAdjacentHTML('beforeend', `<small>${esc(it.sub)}</small>`); x.insertAdjacentHTML('beforeend', Icons.svg('chevron')); x.style.setProperty('--d', i * 60 + 'ms'); if (it.disabled) x.disabled = true; menu.appendChild(x); });
+    return { full: true, body: b };
   });
   function loadSlot(n) {
     const c = Save.load(n); if (!c) { Nav.toast('That save could not be loaded.', 'bad'); return; }
@@ -51,7 +51,7 @@
       }
     };
     draw();
-    return { header: G.titleHeader('Load Career', 'Three save slots'), body,
+    return { header: G.titleHeader('Load Career', 'Three save slots', 'save'), body,
       extra: [{ label: 'Delete', hold: true, go: () => { if (sel) { Save.remove(sel); sel = Save.latest(); Nav.toast('Save deleted'); Nav.refresh(); } } }],
       action: { label: 'Load', go: () => sel && loadSlot(sel) } };
   });
@@ -74,81 +74,77 @@
       cycler('Difficulty', [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], p.difficulty, v => { G.setPrefs({ difficulty: v }); if (S.career) { S.career.difficulty = v; G.save(); } }),
     );
     body.appendChild(el('p', 'note center', 'Difficulty changes how strong rival clubs play. Settings save automatically.'));
-    return { header: G.titleHeader('Settings'), body };
+    return { header: G.titleHeader('Settings', 'Saved automatically', 'gear'), body };
   });
 
   // ================= Achievements =================
   Nav.define('achievements', () => {
     const box = el('div', 'fill'), got = S.prefs.ach, n = DATA.achievements.filter(a => got[a.id]).length;
-    return { header: G.titleHeader('Achievements', `${n} of ${DATA.achievements.length} unlocked`), body: box,
-      mount: () => Nav.pager(box, { key: 'ach', items: DATA.achievements, cols: 1, itemH: 62, gap: 8, render: a => el('div', 'achrow' + (got[a.id] ? ' got' : ''), `<span class="ai">${got[a.id] ? Art.trophy('league', 1) : '<b>?</b>'}</span><span><b>${esc(a.title)}</b><small>${esc(a.desc)}</small></span>`) }) };
+    return { header: G.titleHeader('Achievements', `${n} of ${DATA.achievements.length} unlocked · +${DATA.coins.achievement} coins each`, 'trophy'), body: box, bg: 'bg_trophy',
+      mount: () => Nav.pager(box, { key: 'ach', items: DATA.achievements, cols: 1, itemH: 62, gap: 8, render: a => el('div', 'achrow' + (got[a.id] ? ' got' : ''), `<span class="ai">${got[a.id] ? Art.trophy('league') : '<b>?</b>'}</span><span><b>${esc(a.title)}</b><small>${esc(a.desc)}</small></span>`) }) };
   });
 
   // ================= Credits =================
-  Nav.define('credits', () => ({ header: G.titleHeader('Credits'), body: el('div', 'credits center', `
+  Nav.define('credits', () => ({ header: G.titleHeader('Credits', 'Touchline Manager', 'info'), body: el('div', 'panel center', `
     <img src="assets/ui/studio_logo.png" alt="Forge Frame" style="width:min(70%,300px)">
     <p><b>Touchline Manager</b><br>A Forge Frame game</p>
     <p>Designed and directed by <b>Sudhi</b><br>Built with Claude</p>
-    <p class="note">Real clubs and players appear in this private build for personal play. Ratings are Touchline's own estimates. Club lists and managers from official league and news sources, November 2026.</p>`) }));
+    <p class="note">Real clubs and players appear in this private build for personal play. Ratings are Touchline's own estimates; crests are original artwork, not club logos. Art made with Z-Image, sound with ElevenLabs and Kenney (CC0).</p>`) }));
 
   // ================= New career: 1 region =================
   Nav.define('nc_region', () => {
-    G.theme(null);
-    const box = el('div', 'tiles2');
+    const box = el('div', 'tilegrid'); box.style.gridTemplateColumns = '1fr 1fr';
     REGIONS.forEach((r, i) => {
-      const n = r.countries.filter(c => ready(c[0])).length, t = el('button', 'rtile' + (n ? '' : ' locked') + (i === REGIONS.length - 1 ? ' span2' : ''));
-      t.innerHTML = `<span class="fls">${r.flags.map(f => Flags.svg(f, 30, 20)).join('') || '<b class="globe">🌍</b>'}</span><b>${esc(r.name)}</b><small>${n ? `${n} of ${r.countries.length} countries ready` : 'Coming soon'}</small>`;
+      const n = r.countries.filter(c => ready(c[0])).length, t = el('button', 'gtile' + (n ? '' : ' locked') + (i === REGIONS.length - 1 ? ' span2' : ''));
+      t.innerHTML = `<span class="fls">${r.flags.map(f => Flags.svg(f, 30, 20)).join('') || Icons.svg('globe')}</span><b>${esc(r.name)}</b><small>${n ? `${n} of ${r.countries.length} countries ready` : 'Coming soon'}</small>`;
       t.onclick = () => n ? Nav.push('nc_country', { region: r.id }) : (Sound.play('error'), Nav.toast(`${r.name} arrives in a future update.`));
       box.appendChild(t);
     });
-    return { header: stepHdr(1, 'Region'), body: box };
+    return { header: stepHdr(1, 'Choose a Region', 'globe'), body: box, bg: 'bg_menu' };
   });
   // ================= 2 country =================
   Nav.define('nc_country', p => {
-    const r = REGIONS.find(x => x.id === p.region), box = el('div', 'tiles3');
+    const r = REGIONS.find(x => x.id === p.region), box = el('div', 'tilegrid'); box.style.gridTemplateColumns = r.countries.length > 4 ? '1fr 1fr 1fr' : '1fr 1fr';
     for (const [code, name] of r.countries) {
-      const ok = ready(code), t = el('button', 'ctile' + (ok ? '' : ' locked'));
+      const ok = ready(code), t = el('button', 'gtile' + (ok ? '' : ' locked'));
       t.innerHTML = `${Flags.svg(code, 54, 36)}<b>${esc(name)}</b><small>${ok ? WORLD.divisionsOf(code).length + ' divisions' : 'Soon'}</small>`;
       t.onclick = () => ok ? Nav.push('nc_league', { country: code }) : (Sound.play('error'), Nav.toast(`${name} arrives in a future update.`));
       box.appendChild(t);
     }
-    return { header: stepHdr(2, r.name), body: box };
+    return { header: stepHdr(2, r.name, 'flag'), body: box, bg: 'bg_menu' };
   });
   // ================= 3 league =================
   Nav.define('nc_league', p => {
-    const box = el('div', 'leagues');
+    const box = el('div', 'stack');
     for (const d of WORLD.divisionsOf(p.country)) {
       const n = WORLD.clubsIn(d.id).length, rules = [d.tier > 1 ? `${d.up} up${d.playoff ? ' + play-offs' : ''}` : 'Title & Europe', d.down ? `${d.down} down` : ''].filter(Boolean).join(' · ');
-      const t = el('button', 'ltile', `<span class="tier">${d.tier}</span><span class="who"><b>${esc(d.name)}</b><small>${n} clubs · ${rules}</small></span><i>▶</i>`);
+      const t = el('button', 'lrow', `<span class="av">${d.tier}</span><span class="lt"><b style="font:700 17px var(--serif)">${esc(d.name)}</b><small>${n} clubs · ${rules}</small></span>${Icons.svg('chevron')}`); t.style.height = '62px';
       t.onclick = () => Nav.push('nc_club', { div: d.id }); box.appendChild(t);
     }
-    return { header: stepHdr(3, WORLD.countries[p.country].name), body: box };
+    return { header: stepHdr(3, WORLD.countries[p.country].name, 'trophy'), body: box, bg: 'bg_menu' };
   });
   // ================= 4 club grid + detail card =================
   function clubCard(c, onChoose) {
-    G.theme(c.kit);
     const top = (WORLD.squads[c.id] || []).slice().sort((a, b) => b.rating - a.rating).slice(0, 3);
     const body = el('div', 'clubcard');
     body.innerHTML = `<div class="cc-top"><span class="crest">${Art.crest(c)}</span><div><h3>${esc(c.name)}</h3><small>${esc(WORLD.divisions[c.div].name)}</small></div></div>
-      <div class="kv"><span>Stadium</span><b>${esc(c.stadium)}</b><span>Capacity</span><b>${c.capacity.toLocaleString()}</b><span>You replace</span><b>${esc(c.manager || 'Caretaker')}</b><span>Rival</span><b>${esc((WORLD.club(c.rival) || { name: '—' }).name)}</b><span>Reputation</span><b>${c.rep}</b></div>
+      <div class="cc-img" style="background-image:url(${Art.stadiumImg(c.capacity)})"></div><div class="kv"><span>Stadium</span><b>${esc(c.stadium)}</b><span>Capacity</span><b>${c.capacity.toLocaleString()}</b><span>You replace</span><b>${esc(c.manager || 'Caretaker')}</b><span>Rival</span><b>${esc((WORLD.club(c.rival) || { name: '—' }).name)}</b><span>Reputation</span><b>${c.rep}</b></div>
       <div class="brief"><small>The board's brief</small><b>${esc(Sim.previewBrief(c.id))}</b></div>
       ${top.length ? `<div class="stars3">${top.map(p => `<span><b>${p.rating}</b>${esc(G.surname(p.name))}</span>`).join('')}</div>` : '<div class="note center">Squad: generated players</div>'}`;
-    Nav.card({ body, buttons: [{ label: 'Back', ghost: true, go: () => G.theme(null) }, { label: 'Choose Club', go: onChoose }] });
+    Nav.card({ cls: 'clubcard-c', body, buttons: [{ label: 'Back', ghost: true }, { label: 'Choose Club', go: onChoose }] });
   }
   Nav.define('nc_club', p => {
-    G.theme(null);
     const d = WORLD.divisions[p.div], clubs = WORLD.clubsIn(p.div).slice().sort((a, b) => a.name.localeCompare(b.name)), box = el('div', 'fill');
-    return { header: stepHdr(4, d.name), body: box,
-      mount: () => Nav.pager(box, { key: 'clubs' + p.div, items: clubs, cols: 4, itemH: w => Math.round(w * 1.05), gap: 8, cls: 'crestgrid', render: c => {
-        const t = el('button', 'cgtile', `<span class="crest">${Art.crest(c)}</span><b>${esc(c.short.replace(/\d/g, ''))}</b>`);
-        t.style.setProperty('--k1', c.kit[0]); t.style.setProperty('--k2', c.kit[1]);
+    return { header: stepHdr(4, d.name, 'club'), body: box, bg: 'bg_menu',
+      mount: () => Nav.pager(box, { key: 'clubs' + p.div, items: clubs, cols: 4, itemH: w => Math.round(w * 1.12), gap: 8, cls: 'crestgrid', render: c => {
+        const t = el('button', 'cg', `<span class="crest">${Art.crest(c)}</span><b>${esc(c.short.replace(/\d/g, ''))}</b>`);
         t.onclick = () => clubCard(c, () => Nav.push('nc_manager', { club: c.id })); return t; } }) };
   });
   // ================= 5a manager profile =================
   Nav.define('nc_manager', p => {
-    const c = WORLD.club(p.club); G.theme(c.kit);
+    const c = WORLD.club(p.club);
     const draft = Object.assign({ name: S.prefs.lastName || '', nat: S.prefs.lastNat || 'ENG' }, p.draft || {});
-    const body = el('div', 'mgr');
+    const body = el('div', 'stack');
     const badge = el('div', 'mbadge', Art.badge(draft.name || 'Boss', c.kit));
     const inp = el('input', 'tinput'); inp.placeholder = 'Your name'; inp.maxLength = 22; inp.value = draft.name; inp.autocomplete = 'off';
     inp.oninput = () => { draft.name = inp.value.trim(); badge.innerHTML = Art.badge(draft.name || 'Boss', c.kit); };
@@ -157,16 +153,16 @@
     const setN = d => { ni = (ni + d + nats.length) % nats.length; draft.nat = nats[ni]; val.innerHTML = `${Flags.svg(nats[ni], 30, 20)} ${esc(Flags.name(nats[ni]))}`; Sound.play('move'); };
     const pv = el('button', 'cb', '‹'), nx = el('button', 'cb', '›'); pv.onclick = () => setN(-1); nx.onclick = () => setN(1);
     natRow.append(el('span', '', 'Nationality'), pv, val, nx);
-    body.append(badge, el('label', 'lbl', 'Manager name'), inp, natRow, el('p', 'note center', 'Your profile follows you from club to club: trophies, sackings, win rate.'));
-    return { header: G.titleHeader('New Career', 'Step 5 of 5 · Your profile'), body,
+    body.append(badge, el('label', 'note', 'Manager name'), inp, natRow, el('p', 'note center', 'Your profile follows you from club to club: trophies, sackings, win rate.'));
+    return { header: stepHdr(5, 'Your Profile', 'user'), body, bg: 'bg_office',
       action: { label: 'Next', go: () => { draft.name = draft.name || 'The Boss'; G.setPrefs({ lastName: draft.name, lastNat: draft.nat }); Nav.push('nc_confirm', { club: p.club, draft }); } } };
   });
   // ================= 5b confirm =================
   Nav.define('nc_confirm', p => {
-    const c = WORLD.club(p.club); G.theme(c.kit);
+    const c = WORLD.club(p.club);
     const opts = { legends: S.prefs.legends !== false, difficulty: S.prefs.difficulty };
-    const body = el('div', 'confirm');
-    body.innerHTML = `<div class="cf-crest"><span class="crest">${Art.crest(c)}</span></div><h2>${esc(c.name)}</h2><div class="note center">${esc(c.stadium)} · ${esc(WORLD.divisions[c.div].name)}</div>
+    const body = el('div', 'stack');
+    body.innerHTML = `<div class="panel" style="display:flex;align-items:center;gap:12px"><span class="crest" style="width:66px;height:74px">${Art.crest(c)}</span><div><h2>${esc(c.name)}</h2><div class="note">${esc(c.stadium)} · ${esc(WORLD.divisions[c.div].name)}</div></div></div>
       <div class="brief"><small>Manager</small><b>${Flags.svg(p.draft.nat, 24, 16)} ${esc(p.draft.name)}</b></div><div class="brief"><small>The board's brief</small><b>${esc(Sim.previewBrief(c.id))}</b></div>`;
     const sw = el('label', 'switch', `<input type="checkbox" ${opts.legends ? 'checked' : ''}><i></i><span><b>Include legends</b><small>${WORLD.legends.length} greats at their peak join the world</small></span>`);
     sw.querySelector('input').onchange = e => { opts.legends = e.target.checked; G.setPrefs({ legends: opts.legends }); Sound.play('move'); };
@@ -179,7 +175,7 @@
         S.career.slot = slot; G.save(); Nav.reset('unveil');
       }, 30);
     };
-    return { header: G.titleHeader('Ready?', 'Confirm your new career'), body,
+    return { header: G.titleHeader('Ready?', 'Confirm your new career', 'handshake'), body, bg: 'bg_board',
       action: { label: 'Take Charge', go: () => { const free = Save.freeSlot(); if (free) return take(free);
         const pick = el('div', 'slots'); const slots = Save.slots();
         for (let i = 1; i <= DATA.slotCount; i++) { const m = slots[i], b = el('button', 'slot', `<span class="who"><b>Slot ${i}: ${esc(m.name)}</b><small>${G.seasonLabel(m.season)} · ${esc(m.manager)}</small></span>`); b.onclick = () => { Nav.closeCard(); take(i); }; pick.appendChild(b); }
@@ -188,13 +184,13 @@
 
   // ================= Unveiling =================
   Nav.define('unveil', () => {
-    const car = S.career, c = G.me(); G.theme(c.kit); Sound.play('sting'); Sound.crowd(.6); Sound.swell(2, 2.5);
-    const b = el('div', 'unveil');
-    b.innerHTML = `<div class="rays"></div><div class="uv-crest"><span class="crest">${Art.crest(c)}</span></div>
-      <div class="uv-l1">Welcome to</div><div class="uv-l2">${esc(c.name)}</div><div class="uv-l3">${Flags.svg(car.manager.nat, 24, 16)} ${esc(car.manager.name)} · Manager</div>
-      <div class="uv-brief"><small>The board's brief</small><b>${esc(car.brief.text)}</b><small>They want ${esc(DATA.styles[car.brief.style].label.toLowerCase())} football · ${esc(c.stadium)}</small></div>`;
-    const go = Nav.button({ label: "Let's go", go: () => { G.checkAchievements(); Nav.reset('hub'); } }, 'btn big uv-go');
+    const car = S.career, c = G.me(); Sound.play('sting_unveil'); setTimeout(() => Sound.play('camera'), 900); Sound.crowd(.6); Sound.swell(2, 2.5);
+    const b = el('div', 'cine'); b.style.setProperty('--bgimg', `url(${Art.stadiumImg(c.capacity)})`);
+    b.innerHTML = `<div class="rays"></div><span class="crest big-crest">${Art.crest(c)}</span>
+      <div class="l1">Welcome to</div><div class="l2">${esc(c.name)}</div><div class="l3">${Flags.svg(car.manager.nat, 24, 16)} ${esc(car.manager.name)} · Manager</div>
+      <div class="panel brief" style="margin-top:8px"><small>The board's brief</small><b>${esc(car.brief.text)}</b><small style="letter-spacing:0;text-transform:none;color:var(--muted)">They want ${esc(DATA.styles[car.brief.style].label.toLowerCase())} football at ${esc(c.stadium)}</small></div>`;
+    const go = Nav.button({ label: "Let's go", icon: 'chevron', go: () => { HubUI.H.tab = 'office'; G.checkAchievements(); Nav.reset('hub'); } }, 'btn big');
     b.appendChild(go);
-    return { full: true, cls: 'night', body: b };
+    return { full: true, body: b };
   });
 })();

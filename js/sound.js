@@ -1,65 +1,55 @@
-// Sound and haptics. Everything is synthesised with WebAudio (no audio files yet; ElevenLabs effects can replace these later).
-// Menu ticks, whistles, crowd ambience that swells on chances and roars on goals, a sting for big moments.
+// Sound: real samples (ElevenLabs for match, crowd and stings; Kenney CC0 clicks + soft synth for the interface),
+// decoded once with WebAudio, a random variant with a slight pitch change on every play. Two looping ambience beds.
+// Haptics via navigator.vibrate.
 'use strict';
 const Sound = (() => {
-  let ctx = null, master = null, crowdGain = null, crowdSrc = null, crowdFilter = null, prefs = { sfx: .8, crowd: .5, haptics: true }, crowdLevel = 0;
-  const now = () => ctx.currentTime;
+  const BANK = { tap: 4, select: 3, back: 3, swipe: 3, card: 3, error: 2, hold: 2, toast: 2, coin: 3, ach: 2, stamp: 2, camera: 2, phone: 2,
+    whistle1: 3, whistle2: 2, whistle3: 2, kick: 5, post: 2, net: 3, ooh: 4, goal: 4, groan: 3, applause: 2, boo: 2, chant: 3,
+    sting_unveil: 2, sting_trophy: 1, sting_sacked: 1, sting_signing: 1, sting_deadline: 1, amb_stadium: 1, amb_menu: 1 };
+  const VOL = { tap: .55, swipe: .6, card: .7, select: .75, back: .65, hold: .6, error: .7, toast: .7, kick: .8, chant: .7, ooh: .9, goal: 1, groan: .85 };
+  let ctx = null, master = null, buf = {}, loading = false, prefs = { sfx: .8, crowd: .5, haptics: true };
+  const beds = {};  // name -> {src, gain}
+  let bedName = null, bedLevel = 0;
+  // legacy names used around the game
+  const ALIAS = { tick: 'tap', move: 'swipe', flip: 'card', confirm: 'select', unlock: 'ach', sting: 'sting_unveil', chance: 'ooh', concede: 'groan' };
+
   function unlock() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
-    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination); } catch (e) { ctx = null; }
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.connect(ctx.destination); } catch (e) { return; } }
+    if (ctx.state === 'suspended') ctx.resume();
+    if (!loading) { loading = true; loadAll(); }
   }
-  function setPrefs(p) { prefs = p; if (crowdGain && ctx) crowdGain.gain.setTargetAtTime(crowdLevel * prefs.crowd * .22, now(), .3); }
-  function env(g, t0, a, peak, d) { g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(peak, t0 + a); g.gain.exponentialRampToValueAtTime(.0001, t0 + a + d); }
-  function tone(freq, dur, type, vol, delay, slide) {
-    if (!ctx || !prefs.sfx) return; const t0 = now() + (delay || 0), o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
-    env(g, t0, .005, (vol || .2) * prefs.sfx, dur); o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + .05);
+  function loadAll() {
+    const order = ['tap', 'select', 'back', 'swipe', 'card', 'toast', 'amb_menu'].concat(Object.keys(BANK));
+    const seen = new Set();
+    (async () => { for (const k of order) { if (seen.has(k)) continue; seen.add(k); buf[k] = [];
+      for (let i = 1; i <= BANK[k]; i++) { try { const r = await fetch(`assets/sound/${k}_${i}.mp3`); const ab = await r.arrayBuffer(); buf[k].push(await ctx.decodeAudioData(ab)); } catch (e) {} }
+      if (k === bedName) startBed(bedName); } })();
   }
-  let noiseBuf = null;
-  function noise() { if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s; }
-  function burst(dur, f0, f1, vol, q) {
-    if (!ctx || !prefs.sfx) return; const t0 = now(), s = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-    f.type = 'bandpass'; f.Q.value = q || 1.2; f.frequency.setValueAtTime(f0, t0); f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-    g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime((vol || .3) * prefs.sfx, t0 + dur * .25); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
-    s.connect(f).connect(g).connect(master); s.start(t0); s.stop(t0 + dur + .05);
+  function setPrefs(p) { prefs = p; for (const n in beds) beds[n].gain.gain.setTargetAtTime(n === bedName ? bedLevel * prefs.crowd : 0, ctx ? ctx.currentTime : 0, .4); }
+  function play(name, opts) {
+    try {
+      unlock(); name = ALIAS[name] || name; if (!ctx || !prefs.sfx) return;
+      const list = buf[name]; if (!list || !list.length) return;
+      const src = ctx.createBufferSource(), g = ctx.createGain();
+      src.buffer = list[Math.floor(Math.random() * list.length)];
+      src.playbackRate.value = (opts && opts.rate) || (1 + (Math.random() - .5) * .08);
+      g.gain.value = prefs.sfx * (VOL[name] || .9) * ((opts && opts.vol) || 1);
+      src.connect(g).connect(master); src.start();
+    } catch (e) {}
   }
-  function whistle(blasts) {
-    if (!ctx || !prefs.sfx) return;
-    const lens = blasts === 3 ? [.25, .25, .9] : blasts === 2 ? [.25, .6] : [.5];
-    let t = now();
-    for (const L of lens) {
-      const o = ctx.createOscillator(), lfo = ctx.createOscillator(), lg = ctx.createGain(), g = ctx.createGain();
-      o.type = 'triangle'; o.frequency.value = 2900; lfo.frequency.value = 38; lg.gain.value = 140; lfo.connect(lg).connect(o.frequency);
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.12 * prefs.sfx, t + .02); g.gain.setValueAtTime(.12 * prefs.sfx, t + L - .05); g.gain.linearRampToValueAtTime(0, t + L);
-      o.connect(g).connect(master); o.start(t); lfo.start(t); o.stop(t + L + .05); lfo.stop(t + L + .05); t += L + .12;
-    }
+  function startBed(name) {
+    if (!ctx || !buf[name] || !buf[name].length || beds[name]) return;
+    const src = ctx.createBufferSource(), gain = ctx.createGain(); src.buffer = buf[name][0]; src.loop = true; gain.gain.value = 0;
+    src.connect(gain).connect(master); src.start(); beds[name] = { src, gain };
   }
-  function crowd(level) {   // 0 = off, .4 = menus, 1 = match
-    if (!ctx) return; crowdLevel = level;
-    if (!crowdSrc) {
-      crowdSrc = noise(); crowdFilter = ctx.createBiquadFilter(); crowdFilter.type = 'bandpass'; crowdFilter.frequency.value = 700; crowdFilter.Q.value = .6;
-      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = .13; lg.gain.value = 180; lfo.connect(lg).connect(crowdFilter.frequency); lfo.start();
-      crowdGain = ctx.createGain(); crowdGain.gain.value = 0; crowdSrc.connect(crowdFilter).connect(crowdGain).connect(master); crowdSrc.start();
-    }
-    crowdGain.gain.setTargetAtTime(level * prefs.crowd * .22, now(), .6);
+  // crowd(level): 0 = silent, ~.35 = menus (outside the stadium), >= .6 = match crowd
+  function crowd(level) {
+    unlock(); if (!ctx) return;
+    const name = level >= .6 ? 'amb_stadium' : 'amb_menu'; bedName = level > 0 ? name : bedName; bedLevel = level;
+    if (level > 0) startBed(name);
+    for (const n in beds) beds[n].gain.gain.setTargetAtTime(level > 0 && n === name ? Math.min(1, level) * prefs.crowd * .9 : 0, ctx.currentTime, .6);
   }
-  function swell(amount, dur) { if (!crowdGain || !ctx) return; const base = crowdLevel * prefs.crowd * .22, t = now(); crowdGain.gain.cancelScheduledValues(t); crowdGain.gain.setTargetAtTime(base * (1 + amount), t, .15); crowdGain.gain.setTargetAtTime(base, t + dur, .8); }
-  const fx = {
-    tick: () => tone(1500, .03, 'sine', .08),
-    move: () => tone(900, .04, 'triangle', .1),
-    select: () => { tone(660, .06, 'triangle', .14); tone(990, .08, 'triangle', .12, .05); },
-    back: () => { tone(700, .06, 'triangle', .12); tone(470, .08, 'triangle', .1, .05); },
-    confirm: () => { [523, 659, 784].forEach((f, i) => tone(f, .22, 'triangle', .12, i * .03)); },
-    error: () => tone(160, .18, 'square', .08),
-    flip: () => burst(.25, 600, 3000, .15, .8),
-    sting: () => { [262, 330, 392, 523].forEach((f, i) => tone(f, .9, 'sawtooth', .05, i * .07)); [523, 659, 784].forEach(f => tone(f, 1.2, 'triangle', .08, .3)); burst(1.2, 400, 1400, .12, .6); },
-    chance: () => swell(1.6, 1.2),
-    goal: () => { swell(4, 3.5); burst(2.6, 500, 1100, .35, .5); tone(233, .7, 'sawtooth', .06, .1); tone(233, .9, 'sawtooth', .06, .9); },
-    concede: () => { swell(-.5, 2); tone(196, .5, 'sine', .06); },
-    whistle1: () => whistle(1), whistle2: () => whistle(2), whistle3: () => whistle(3),
-    unlock: () => { tone(880, .1, 'triangle', .1); tone(1175, .12, 'triangle', .1, .08); tone(1568, .25, 'triangle', .12, .16); },
-  };
-  function play(name) { try { unlock(); fx[name] && fx[name](); } catch (e) {} }
+  function swell(amount, dur) { const b = beds.amb_stadium; if (!b || !ctx) return; const base = bedLevel * prefs.crowd * .9, t = ctx.currentTime; b.gain.gain.cancelScheduledValues(t); b.gain.gain.setTargetAtTime(Math.max(0, base * (1 + amount * .4)), t, .15); b.gain.gain.setTargetAtTime(base, t + dur, .8); }
   function buzz(ms) { try { if (prefs.haptics && navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {} }
   return { unlock, setPrefs, play, buzz, crowd, swell };
 })();

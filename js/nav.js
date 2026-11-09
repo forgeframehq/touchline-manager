@@ -16,7 +16,7 @@ const Nav = (() => {
     window.addEventListener('popstate', () => { if (ignorePop) { ignorePop--; return; } if (cardOpen) { closeCard(); history.pushState({ tlm: stack.length }, ''); return; } const t = stack[stack.length - 1]; if (t && t.spec.onBack) { history.pushState({ tlm: stack.length }, ''); t.spec.onBack(); return; } if (stack.length > 1) back(true); else { history.pushState({ tlm: stack.length }, ''); askQuit(); } });
     const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (App && App.addListener) App.addListener('backButton', () => backKey());
-    document.addEventListener('pointerdown', e => { Sound.unlock(); const b = e.target.closest('button'); if (b && !b.disabled && !b.classList.contains('hold')) { Sound.play(b.dataset.snd || 'tick'); Sound.buzz(6); } }, true);
+    document.addEventListener('pointerdown', e => { Sound.unlock(); const b = e.target.closest('button'); if (b && !b.disabled && !b.classList.contains('hold')) { Sound.play(b.dataset.snd || 'tap'); Sound.buzz(6); } }, true);
   }
   function backKey() { if (cardOpen) { closeCard(); Sound.play('back'); return; } const t = stack[stack.length - 1]; if (t && t.spec.onBack) { t.spec.onBack(); return; } if (stack.length > 1) back(); else askQuit(); }
   function askQuit() {
@@ -30,16 +30,17 @@ const Nav = (() => {
   function build(name, params) {
     const spec = SCREENS[name](params || {}) || {};
     const s = el('section', 'scr ' + (spec.cls || ''));
+    if (spec.bg) s.style.setProperty('--bgimg', `url(assets/art/${spec.bg}.webp)`);
     if (!spec.full) {
       const hdr = el('header', 'hdr'); if (typeof spec.header === 'string') hdr.innerHTML = spec.header; else if (spec.header) hdr.appendChild(spec.header); s.appendChild(hdr);
       const main = el('main', 'content'); if (spec.body) main.appendChild(spec.body); s.appendChild(main);
-      s.appendChild(bar(spec));
+      s.appendChild(spec.footer || bar(spec));
     } else if (spec.body) s.appendChild(spec.body);
     return { s, spec };
   }
   function bar(spec) {
     const f = el('footer', 'bar');
-    const bk = spec.back === false ? el('span', 'bb spacer') : el('button', 'bb back', `<i>◀</i><span>${esc((spec.back && spec.back.label) || 'Back')}</span>`);
+    const bk = spec.back === false ? el('span', 'bb spacer') : el('button', 'bb back', `${Icons.svg('back')}<span>${esc((spec.back && spec.back.label) || 'Back')}</span>`);
     if (spec.back !== false) { bk.dataset.snd = 'back'; bk.onclick = () => (spec.back && spec.back.go) ? spec.back.go() : back(); }
     f.appendChild(bk);
     const mid = el('div', 'mid'); (spec.extra || []).forEach(b => mid.appendChild(button(b, 'bb ghost'))); f.appendChild(mid);
@@ -48,10 +49,10 @@ const Nav = (() => {
     return f;
   }
   function button(b, cls) {
-    const x = el('button', (cls || 'btn') + (b.cls ? ' ' + b.cls : '') + (b.hold ? ' hold' : ''), `<span>${esc(b.label)}</span>${b.icon ? '<i>' + b.icon + '</i>' : (cls || '').includes('act') ? '<i>▶</i>' : ''}${b.sub ? `<small>${esc(b.sub)}</small>` : ''}`);
+    const x = el('button', (cls || 'btn') + (b.cls ? ' ' + b.cls : '') + (b.hold ? ' hold' : ''), `${b.icon ? Icons.svg(b.icon) : ''}<span>${esc(b.label)}</span>${!b.icon && (cls || '').includes('act') ? Icons.svg('chevron') : ''}${b.sub ? `<small>${esc(b.sub)}</small>` : ''}`);
     if (b.disabled) x.disabled = true;
     if (b.id) x.id = b.id;
-    if (b.hold) holdify(x, b.go); else if (b.go) { x.dataset.snd = b.snd || ((cls || '').includes('act') ? 'select' : 'tick'); x.onclick = b.go; }
+    if (b.hold) holdify(x, b.go); else if (b.go) { x.dataset.snd = b.snd || ((cls || '').includes('act') ? 'select' : 'tap'); x.onclick = b.go; }
     return x;
   }
   // hold-to-confirm: a ring fills while held (650 ms)
@@ -67,10 +68,10 @@ const Nav = (() => {
   }
 
   function show(entry, dir) {
-    const old = root.querySelector('.scr.on'); const s = entry.s;
+    const olds = [...root.querySelectorAll('.scr')].filter(x => !x.classList.contains('to-left') && !x.classList.contains('to-right') && !x.classList.contains('to-fade')); const s = entry.s;
     s.classList.add(dir === 'back' ? 'from-left' : dir === 'none' ? 'on' : 'from-right'); root.appendChild(s);
     requestAnimationFrame(() => { if (entry.spec.mount) entry.spec.mount(s); requestAnimationFrame(() => { s.classList.remove('from-left', 'from-right'); s.classList.add('on'); }); });
-    if (old) { old.classList.remove('on'); old.classList.add(dir === 'back' ? 'to-right' : 'to-left'); setTimeout(() => old.remove(), 340); }
+    for (const old of olds) { old.classList.remove('on', 'from-right', 'from-left', 'fade'); old.classList.add(dir === 'back' ? 'to-right' : 'to-left'); setTimeout(() => old.remove(), 340); }
   }
   function push(name, params) {
     if (busy) return; busy = true; setTimeout(() => busy = false, 280);
@@ -86,6 +87,10 @@ const Nav = (() => {
   }
   function backTo(name) { let k = 0; while (stack.length > 1 && stack[stack.length - 1].name !== name) { stack.pop(); k++; } if (k) { ignorePop++; history.go(-k); } const top = stack[stack.length - 1], e = build(top.name, top.params); Object.assign(top, e); show(top, 'back'); }
   function refresh() { const top = stack[stack.length - 1]; if (!top) return; const e = build(top.name, top.params); const old = top.s; Object.assign(top, e); e.s.classList.add('on'); root.replaceChild(e.s, old); if (e.spec.mount) requestAnimationFrame(() => e.spec.mount(e.s)); }
+  // lateral swap (bottom-nav tabs): rebuild the top screen with a quick cross-fade, no history entry
+  function swap() { const top = stack[stack.length - 1]; if (!top) return; const e = build(top.name, top.params), old = top.s; Object.assign(top, e); e.s.classList.add('fade'); root.appendChild(e.s);
+    requestAnimationFrame(() => { if (e.spec.mount) e.spec.mount(e.s); requestAnimationFrame(() => { e.s.classList.remove('fade'); e.s.classList.add('on'); }); });
+    old.classList.remove('on'); old.classList.add('to-fade'); setTimeout(() => old.remove(), 320); root.querySelectorAll('.scr.from-right,.scr.from-left').forEach(x => x !== e.s && x.remove()); }
   const top = () => stack[stack.length - 1];
 
   // ---------- pop-up card ----------
@@ -112,7 +117,7 @@ const Nav = (() => {
   function achievement(a) {
     achQ.push(a); if (achBusy) return; achBusy = true;
     const next = () => { const x = achQ.shift(); if (!x) { achBusy = false; return; }
-      const t = el('div', 'ach', `<b class="trophy-i">${Art.trophy('league', 1)}</b><span><small>Achievement unlocked</small><b>${esc(x.title)}</b><em>${esc(x.desc)}</em></span>`);
+      const t = el('div', 'ach', `<b class="trophy-i">${Art.trophy('league')}</b><span><small>Achievement unlocked</small><b>${esc(x.title)}</b><em>${esc(x.desc)}</em></span>`);
       document.body.appendChild(t); Sound.play('unlock'); Sound.buzz(25); requestAnimationFrame(() => t.classList.add('on'));
       setTimeout(() => { t.classList.remove('on'); setTimeout(() => { t.remove(); next(); }, 350); }, 3000); };
     next();
@@ -139,8 +144,8 @@ const Nav = (() => {
       slice.forEach((it, i) => grid.appendChild(opts.render(it, page * per + i)));
       ctl.innerHTML = '';
       if (total > 1) {
-        const prev = el('button', 'pg-btn', '‹'), next = el('button', 'pg-btn', '›'), dots = el('span', 'pg-dots', Array.from({ length: total }, (_, i) => `<i class="${i === page ? 'on' : ''}"></i>`).join(''));
-        prev.disabled = page === 0; next.disabled = page === total - 1; prev.onclick = () => go(-1); next.onclick = () => go(1);
+        const prev = el('button', 'pg-btn', '‹'), next = el('button', 'pg-btn', '›'), dots = total > 9 ? el('span', 'pg-count', `${page + 1} / ${total}`) : el('span', 'pg-dots', Array.from({ length: total }, (_, i) => `<i class="${i === page ? 'on' : ''}"></i>`).join(''));
+        prev.dataset.snd = next.dataset.snd = 'swipe'; prev.disabled = page === 0; next.disabled = page === total - 1; prev.onclick = () => go(-1); next.onclick = () => go(1);
         ctl.append(prev, dots, next);
       }
       pages[opts.key] = page;
@@ -154,11 +159,11 @@ const Nav = (() => {
   }
 
   // ---------- sub-tabs (segmented, swipeable between) ----------
-  function subtabs(tabs, active, onPick) {
-    const s = el('div', 'subtabs');
-    tabs.forEach(t => { const b = el('button', t.id === active ? 'on' : '', esc(t.label) + (t.badge ? `<i>${esc(t.badge)}</i>` : '')); b.onclick = () => { if (t.id !== active) { Sound.play('move'); onPick(t.id); } }; s.appendChild(b); });
+  function subtabs(tabs, active, onPick, small) {
+    const s = el('div', 'gtabs' + (small ? ' small' : ''));
+    tabs.forEach(t => { const b = el('button', t.id === active ? 'on' : '', (t.icon ? Icons.svg(t.icon) : '') + `<span>${esc(t.label)}</span>` + (t.badge ? `<i>${esc(t.badge)}</i>` : '')); b.dataset.snd = 'swipe'; b.onclick = () => { if (t.id !== active) { Sound.play('move'); onPick(t.id); } }; s.appendChild(b); });
     return s;
   }
 
-  return { init, define, push, replace, reset, back, backTo, refresh, top, card, closeCard, toast, achievement, saving, pager, subtabs, button, holdify, el, esc, backKey, get stack() { return stack; } };
+  return { init, define, push, replace, reset, back, backTo, refresh, swap, top, card, closeCard, toast, achievement, saving, pager, subtabs, button, holdify, el, esc, backKey, get stack() { return stack; } };
 })();

@@ -2,8 +2,8 @@
 // Clubs, squads and legends live in js/packs/ (via js/world.js).
 'use strict';
 const DATA = {
-  version: 3,
-  saveKey: 'tlm.career.v3', slotsKey: 'tlm.slots.v3', slotCount: 3,
+  version: 4,
+  saveKey: 'tlm.career.v4', slotsKey: 'tlm.slots.v4', slotCount: 3,
   prefsKey: 'tlm.prefs.v1',
 
   season: { pointsWin: 3, pointsDraw: 1, squadMin: 22, squadMax: 32, subsOnBench: 7, subsAllowed: 5, matchMinutes: 90, addedTime: [1, 6], startYear: 2026 },
@@ -93,6 +93,41 @@ const DATA = {
     ],
     styles: ['possession', 'direct', 'counter'],
   },
+
+  // club systems
+  facilities: {
+    training: { name: 'Training Facilities', icon: 'dumbbell', img: 'f_training', desc: 'Young players grow faster' },
+    youth:    { name: 'Youth Academy', icon: 'youth', img: 'f_academy', desc: 'Better youth intakes each summer' },
+    scouting: { name: 'Scouting Network', icon: 'binoculars', img: 'f_scouting', desc: 'Sharper scout reports, see potential' },
+    medical:  { name: 'Medical Centre', icon: 'medical', img: 'f_medical', desc: 'Injured players recover faster' },
+  },
+  facilityCost: { base: 250, tierMul: { 1: 4, 2: 1.5, 3: .6, 4: .35, 5: .2 } },   // £k × level²
+  expansion: { share: .12, minSeats: 1000, costPerSeat: { 1: 2.5, 2: 1.2, 3: .6, 4: .4, 5: .25 }, weeks: 8 },
+  reputation: [[90, 'Global'], [80, 'Continental'], [65, 'National'], [45, 'Regional'], [0, 'Local']],
+  coins: { start: 100, win: 10, draw: 3, achievement: 50, briefMet: 100, boostCost: 30, boost: 2 },
+  instructions: {
+    press: { label: 'Pressing Intensity', steps: ['Very Low', 'Low', 'Standard', 'High', 'Very High'] },
+    line:  { label: 'Defensive Line', steps: ['Very Deep', 'Deep', 'Standard', 'High', 'Very High'] },
+    pass:  { label: 'Passing Directness', steps: ['Very Short', 'Short', 'Mixed', 'Direct', 'Very Direct'] },
+  },
+  toggles: {
+    highPress: { label: 'High Press', icon: 'run' },
+    playOut: { label: 'Play Out of Defence', icon: 'loop' },
+    possession: { label: 'Control Possession', icon: 'ball' },
+    overlap: { label: 'Overlap', icon: 'arrow' },
+  },
+  presets: {
+    possession: { label: 'Control Possession', mentality: 'balanced', style: 'possession', press: 4, line: 4, pass: 2, toggles: { possession: true, playOut: true } },
+    counter: { label: 'Fast Counter', mentality: 'balanced', style: 'counter', press: 2, line: 2, pass: 4, toggles: {} },
+    gegen: { label: 'Gegenpress', mentality: 'attacking', style: 'direct', press: 5, line: 4, pass: 4, toggles: { highPress: true } },
+    park: { label: 'Park the Bus', mentality: 'defensive', style: 'counter', press: 1, line: 1, pass: 4, toggles: {} },
+    wings: { label: 'Wing Play', mentality: 'balanced', style: 'direct', press: 3, line: 3, pass: 3, toggles: { overlap: true } },
+  },
+  // kit patterns for real clubs (default plain)
+  kitPattern: { newcastle: 'stripes', sunderland: 'stripes', brentford: 'stripes', sheffutd: 'stripes', stoke: 'stripes', westbrom: 'stripes', huddersfield: 'stripes', nottscounty: 'stripes', lincoln: 'stripes',
+    exeter: 'stripes', grimsby: 'stripes', colchester: 'stripes', sheffwed: 'stripes', altrincham: 'stripes', hartlepool: 'stripes', wigan: 'stripes', bournemouth: 'stripes', qpr: 'hoops', reading: 'hoops',
+    doncaster: 'hoops', blackburn: 'halves', bristolrovers: 'quarters', wycombe: 'quarters', kidderminster: 'halves', woking: 'halves', arsenal: 'sleeves', bradford: 'halves', palace: 'stripes' },
+  gkKit: ['#f2c94c', '#1b1b1b'],
 
   fans: { start: 60, win: 3, draw: 0, loss: -3, legendSigned: 6 },
 
