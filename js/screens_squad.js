@@ -12,9 +12,9 @@
 
   function band(car) { const d = WORLD.divisions[G.me().div], b = d.band || [62, 72]; return [b[0] - 14, b[1] + 8]; }
   function starsOf(v, car) { const [lo, hi] = band(car); return Math.max(.5, Math.min(5, Math.round((v - lo) / (hi - lo) * 10) / 2)); }
-  function miniStars(v) { let s = ''; for (let i = 1; i <= 5; i++) s += v >= i ? '★' : v >= i - .5 ? '⯪' : '<i>★</i>'; return `<span class="mst">${s}</span>`; }
+  function miniStars(v) { return `<span class="mbar" title="${v} stars"><i style="width:${v * 20}%"></i></span>`; }
   const avg = p => p.rn ? p.rs / p.rn : 0;
-  const mood = m => m >= 80 ? ['Superb', 'good'] : m >= 65 ? ['Good', 'good'] : m >= 45 ? ['Okay', ''] : ['Poor', 'bad'];
+  const mood = m => m >= 80 ? ['Top', 'good'] : m >= 65 ? ['Good', 'good'] : m >= 45 ? ['Okay', ''] : ['Low', 'bad'];
   // columns per view: [label, getter(for sort), render html]
   function cols(car) {
     return {
@@ -23,7 +23,7 @@
       condition: [['Cond', p => p.fitness, p => `<span class="${p.fitness < 70 ? 'bad' : p.fitness < 85 ? 'warn' : 'good'}">${Math.round(p.fitness)}%</span>`], ['Sharp', p => p.sharp == null ? 70 : p.sharp, p => `${Math.round(p.sharp == null ? 70 : p.sharp)}%`],
         ['Status', p => (p.injured ? 2 : 0) + (p.ban ? 1 : 0), p => p.injured ? `<span class="bad">Inj ${p.injured}w</span>` : p.ban ? '<span class="bad">Ban</span>' : '<span class="good">Fit</span>'], ['Morale', p => p.morale, p => { const [t, c] = mood(p.morale); return `<span class="${c}">${t}</span>`; }]],
       contract: [['Wage', p => p.wage, p => `£${p.wage}K`], ['Expires', p => p.con || 0, p => { const y = Sim.yearsLeft(car, p); return `<span class="${y <= 0 ? 'bad' : y === 1 ? 'warn' : ''}">${p.con || '—'}</span>`; }],
-        ['Status', p => D.squadStatus.indexOf(Sim.statusOf(car, p)), p => esc(Sim.statusOf(car, p).replace(' Player', '').replace('First Team', '1st Team').replace('Hot Prospect', 'Prospect'))], ['TL', p => p.listed ? 1 : 0, p => p.listed ? '<span class="warn">Listed</span>' : '–']],
+        ['Status', p => D.squadStatus.indexOf(Sim.statusOf(car, p)), p => esc({ 'Star Player': 'Star', 'Key Player': 'Key', 'First Team': '1st XI', Rotation: 'Rot.', Backup: 'Back.', 'Hot Prospect': 'Prosp.', Youngster: 'Youth' }[Sim.statusOf(car, p)] || '')], ['TL', p => p.listed ? 1 : 0, p => p.listed ? '<span class="warn">Listed</span>' : '–']],
       stats: [['Apps', p => p.seasonApps, p => p.seasonApps], ['Gls', p => p.seasonGoals, p => p.seasonGoals], ['Ast', p => p.ast || 0, p => p.ast || 0], ['Av R', avg, p => p.rn ? avg(p).toFixed(2) : '–']],
       development: [['Age', p => p.age, p => p.age], ['Pot', p => p.pot, p => miniStars(starsOf(p.pot, car))], ['Gap', p => p.pot - p.rating, p => p.pot > p.rating ? `<span class="good">+${p.pot - p.rating}</span>` : '–'], ['+/–', p => p.rating - (p.r0 || p.rating), p => { const d = p.rating - (p.r0 || p.rating); return d > 0 ? `<span class="good">▲${d}</span>` : d < 0 ? `<span class="bad">▼${-d}</span>` : '–'; }]],
     };
@@ -40,11 +40,12 @@
     const slots = Q.strip === 'xi' ? codes.map((c, i) => ['x' + i, c.replace('DC', 'DC').replace('AMC', 'AMC')]) : Array.from({ length: D.season.subsOnBench }, (_, i) => ['s' + i, 'S' + (i + 1)]);
     for (const [k, lab] of slots) { const filled = k[0] === 'x' ? t.ids[+k.slice(1)] != null : t.bench[+k.slice(1)] != null;
       const b = el('button', 'pchip' + (Q.pick === k ? ' on' : '') + (filled ? '' : ' empty'), esc(lab)); b.onclick = () => { Q.pick = Q.pick === k ? null : k; Q.mode = null; Nav.refresh(); }; strip.appendChild(b); }
-    strip.appendChild(flip); box.appendChild(strip);
+    box.appendChild(strip);
     // toolbar
     const tb = el('div', 'sqbar');
     const chip = (label, val, go, on) => { const b = el('button', 'fchip' + (on ? ' on' : ''), `<small>${label}</small><b>${val}</b>`); b.dataset.snd = 'swipe'; b.onclick = go; return b; };
     tb.append(
+      chip('Pick', Q.strip === 'xi' ? 'XI' : 'Subs', () => { Q.strip = Q.strip === 'xi' ? 'subs' : 'xi'; Q.pick = null; Nav.refresh(); }),
       chip('Filter', FILTERS.find(f => f[0] === Q.filter)[1], () => { Q.filter = FILTERS[(FILTERS.findIndex(f => f[0] === Q.filter) + 1) % FILTERS.length][0]; Nav.refresh(); }),
       chip('View', VNAME[Q.view], () => { Q.view = VIEWS[(VIEWS.indexOf(Q.view) + 1) % VIEWS.length]; Q.sort = null; Nav.refresh(); }),
       chip('Select', Q.mode === 'select' ? `${Q.sel.size} ✓` : 'Off', () => { Q.mode = Q.mode === 'select' ? null : 'select'; Q.sel.clear(); Q.pick = null; Nav.refresh(); }, Q.mode === 'select'),

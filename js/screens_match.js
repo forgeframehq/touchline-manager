@@ -105,7 +105,7 @@
       } else if (e.type === 'sub' && !e.quiet) feedLine(e.min, `Sub ${esc(short(side))}: ${esc(G.surname(e.on))} on, ${esc(G.surname(e.off))} off`, 'sub');
       else if (e.type === 'sub') feedLine(e.min, `${esc(short(side))} sub: ${esc(G.surname(e.on))} for ${esc(G.surname(e.off))}`, 'sub');
       else if (e.type === 'shout' && ours) feedLine(e.min, `You: “${esc(DATA.shouts[e.key].label)}”`, 'shout');
-      else if (e.type === 'yellow') { feedLine(e.min, `🟨 ${esc(G.surname(e.who))} (${esc(short(side))}) is booked`, 'card'); Sound.play('whistle1', { vol: .6 }); }
+      else if (e.type === 'yellow') { feedLine(e.min, `🟨 ${esc(G.surname(e.who))} (${esc(short(side))}) is booked`, 'yc'); Sound.play('whistle1', { vol: .6 }); }
       else if (e.type === 'red') { feedLine(e.min, `🟥 <b>RED CARD</b> ${esc(G.surname(e.who))} (${esc(short(side))}) is sent off!`, 'red'); Sound.play('whistle1'); Sound.play(ours ? 'boo' : 'applause', { vol: .6 }); }
       else if (e.type === 'ht') { feedLine(45, 'Half-time.'); Sound.play('whistle2'); }
       else if (e.type === 'ft') { feedLine(e.min, 'Full-time.'); Sound.play('whistle3'); }

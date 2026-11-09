@@ -73,22 +73,7 @@
       return { el: box, mount: () => { const rows = dash.clientHeight > 330 ? 2 : 1, ih = Math.floor((dash.clientHeight - 40 - (rows - 1) * 8) / rows);
         Nav.pager(dash, { key: 'dash', items: DASH, cols: 2, itemH: ih, gap: 8, render: d => dashCard(car, d, ih) }); } };
     },
-    // ================= Squad: overview / contracts / stats =================
-    squad(car) {
-      const sq = Sim.squadOf(car, car.me), xi = new Set(Sim.fmXI(car).xi.map(p => p.id));
-      const groups = [['GK', 'GK'], ['DF', 'DEF'], ['MF', 'MID'], ['FW', 'ATT']], VIEWS = [['overview', 'Overview'], ['contract', 'Contracts'], ['stats', 'Stats']];
-      const tabs = Nav.subtabs(groups.map(([g, l]) => ({ id: g, label: l, badge: sq.filter(p => p.grp === g).length })), H.sub.squad, id => { H.sub.squad = id; Nav.refresh(); });
-      const vb = el('button', 'fchip', `<small>View</small><b>${VIEWS.find(v => v[0] === H.view)[1]}</b>`); vb.dataset.snd = 'swipe';
-      vb.onclick = () => { H.view = VIEWS[(VIEWS.findIndex(v => v[0] === H.view) + 1) % VIEWS.length][0]; Nav.refresh(); };
-      const list = sq.filter(p => p.grp === H.sub.squad).sort((a, b) => (xi.has(b.id) - xi.has(a.id)) || b.rating - a.rating || a.id - b.id);
-      const wages = Sim.wageBill(car);
-      return { head: G.phead('squad', 'Squad', `${sq.length} players · wages ${G.money(wages)}/wk`, vb, 'compact'), tabs,
-        mount: fill => Nav.pager(fill, { key: 'sq' + H.sub.squad + H.view, items: list, cols: 1, itemH: 58, gap: 6, render: p => {
-          let opts = { xi: xi.has(p.id), sub: xi.has(p.id) ? '<span class="tag">XI</span>' : '' };
-          if (H.view === 'contract') { const y = Sim.yearsLeft(car, p); opts = { xi: opts.xi, sub: esc(Sim.statusOf(car, p)), right: `<b class="ask">£${p.wage}K</b><small class="${y <= 0 ? 'bad' : ''}">${y <= 0 ? 'Expires!' : 'to ' + (p.con || car.season + 1)}${p.listed ? ' · listed' : ''}</small>` }; }
-          if (H.view === 'stats') opts = { xi: opts.xi, sub: `${p.seasonApps} apps`, right: `<b class="ask">${p.seasonGoals}G ${p.ast || 0}A</b><small>avg ${p.rn ? (p.rs / p.rn).toFixed(2) : '—'}</small>` };
-          const r = G.prow(p, opts); r.onclick = () => Nav.push('player', { id: p.id }); return r; } }) };
-    },
+    squad(car) { return SquadUI.view(car); },
     tactics(car) { return TacticsUI.view(car); },
     market(car) { return MarketUI.view(car); },
     // ================= Club =================
