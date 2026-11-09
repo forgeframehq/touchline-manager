@@ -57,7 +57,7 @@ CHECK_JS = r"""
   }
   // 3 off-screen
   for (const e of all) { if (e.closest('.toast,.ach,.rays,.travel,.in-bg,.t2-bg,.in-lights,.in-haze,.in-logo') || e.classList.contains('rays')) continue; const r = e.getBoundingClientRect();
-    if ((r.right > vw + 1 || r.left < -1 || r.bottom > vh + 1) && r.width < vw * 1.5 && getComputedStyle(e).position !== 'fixed') { const par = e.parentElement && e.parentElement.getBoundingClientRect(); if (par && (par.right > vw + 1 || par.left < -1 || par.bottom > vh + 1)) continue; issues.push({ kind: 'offscr', el: label(e), text: txt(e), box: box(r) }); } }
+    const vr = clipRect(e, r); if (vr.width > 1 && vr.height > 1 && (vr.right > vw + 1 || vr.left < -1 || vr.bottom > vh + 1) && r.width < vw * 1.5 && getComputedStyle(e).position !== 'fixed') { const par = e.parentElement && e.parentElement.getBoundingClientRect(); if (par && (par.right > vw + 1 || par.left < -1 || par.bottom > vh + 1)) continue; issues.push({ kind: 'offscr', el: label(e), text: txt(e), box: box(r) }); } }
   // 4 row alignment: direct children of row containers
   for (const row of scope.flatMap(r => [...r.querySelectorAll('.gtabs,.bnav,.tiles,.qtiles,.toggles,.facs,.seg,.boardrow,.vsrow,.topbar,.bar,.scout,.instr')])) {
     if (!visible(row)) continue;
@@ -107,7 +107,7 @@ def flows(pg, shot):
     click('.t2-tile', 0); shot('nc_region'); click('.gtile', 0); shot('nc_country'); click('.gtile', 0); shot('nc_league')
     click('.lrow', 0); shot('nc_club'); click('.cg', 3); shot('nc_clubcard'); click('.card-btns .btn', 1); shot('nc_manager')
     pg.fill('.tinput', 'Sudhi'); click('.bb.act'); shot('nc_confirm'); click('.bb.act'); pg.wait_for_timeout(1700); shot('unveil')
-    ev("TLM.G.setPrefs({tutorial:true}); const c=TLM.career; for(let i=0;i<5;i++) TLM.Sim.playWeek(c); TLM.G.save(); TLM.HubUI = HubUI; Nav.reset('hub')", 900)
+    ev("TLM.G.setPrefs({tutorial:true}); const c=TLM.career; for(let i=0;i<5;i++) TLM.Sim.playWeek(c); c.events=[]; c.jobOffer=null; c.recordFlash=[]; TLM.G.save(); TLM.HubUI = HubUI; Nav.reset('hub')", 900)
     shot('office')
     for v in ['coach', 'general', 'condition', 'contract', 'stats', 'development']: ev(f"SquadUI.Q.view='{v}'; TLM.hubTab('squad')"); shot(f'squad_{v}')
     ev("SquadUI.Q.view='coach'; SquadUI.Q.pick='x3'; Nav.refresh()"); shot('squad_pick'); ev("SquadUI.Q.pick=null; SquadUI.Q.mode='select'; Nav.refresh()"); shot('squad_select'); ev("SquadUI.Q.mode=null; SquadUI.Q.strip='subs'; Nav.refresh()"); shot('squad_subs'); ev("SquadUI.Q.strip='xi'; Nav.refresh()")
@@ -120,7 +120,12 @@ def flows(pg, shot):
     ev("MarketUI.M.sub='search'; TLM.hubTab('market')"); click('.prow', 0); shot('player_target'); ev("Nav.backTo('hub')")
     ev("const p=TLM.career.players.find(x=>x.club&&x.club!==TLM.career.me&&TLM.Sim.knows(TLM.career,x)&&x.rating>70); Nav.push('bid',{id:p.id})", 700); shot('bid'); ev("Nav.backTo('hub')")
     ev("const p=TLM.career.players.find(x=>!x.club); Nav.push('terms',{id:p.id,fee:0})", 700); shot('terms'); ev("Nav.backTo('hub')")
-    for s in ['overview', 'stadium', 'facilities', 'youth', 'finances']: ev(f"TLM.hubTab('club','{s}')"); shot(f'club_{s}')
+    ev("TLM.hubTab('club')"); shot('club_menu')
+    for s in ['stadium', 'facilities', 'training', 'staff', 'youth', 'finances', 'board', 'history', 'sponsors']: ev(f"Nav.push('cl_{s}')", 700); shot(f'cl_{s}'); ev("Nav.backTo('hub')", 400)
+    ev("Nav.push('cl_hire',{role:'coach'})", 700); shot('cl_hire'); ev("Nav.backTo('hub')", 400)
+    ev("const sq=TLM.Sim.squadOf(TLM.career,TLM.career.me); Nav.push('compare',{a:sq[3].id,b:sq[4].id})", 700); shot('compare'); ev("Nav.backTo('hub')", 400)
+    ev("const sq=TLM.Sim.squadOf(TLM.career,TLM.career.me); Nav.push('compare',{a:sq[3].id})", 700); shot('compare_pick'); ev("Nav.backTo('hub')", 400)
+    ev("const c=TLM.career; c.events=[TLM.Sim.makeEvent(c,new RNG(5))]; TLM.hubTab('office')", 900); shot('event_card'); ev("Nav.closeCard(); TLM.career.events=[]", 400)
     ev("TLM.hubTab('squad')"); click('.sqrow:not(.head)', 0); shot('player_own')
     ev("PlayerUI.P.tab='a1'; Nav.refresh()"); shot('player_mental'); ev("PlayerUI.P.tab='info'; Nav.refresh()"); shot('player_info'); ev("PlayerUI.P.tab='a0'")
     ev("const p=TLM.career.players.find(x=>x.club===TLM.career.me); Nav.push('contract',{id:p.id})", 700); shot('contract'); ev("Nav.backTo('hub')")
@@ -144,7 +149,7 @@ def flows(pg, shot):
     for i, nm in [(1, 'fulltime_stats'), (2, 'fulltime_ratings'), (3, 'fulltime_analysis')]: click('.gtabs button', i); shot(nm)
     click('.gtabs button', 0)
     click('.bb.act'); pg.wait_for_timeout(600)
-    ev("const c=TLM.career; while(TLM.Sim.myFixture(c)) TLM.Sim.playWeek(c); TLM.G.save(); TLM.hubTab('office')", 700); shot('office_season_end')
+    ev("const c=TLM.career; while(TLM.Sim.myFixture(c)) TLM.Sim.playWeek(c); c.events=[]; c.jobOffer=null; TLM.G.save(); TLM.hubTab('office')", 700); shot('office_season_end')
     ev("TLM.career.sacked=false; TLM.career.alert=null; Nav.closeCard(); Nav.backTo('hub')", 700)
     for ct in ['league', 'fa', 'lc']: ev("Nav.push('competitions')", 500); ev(f"document.querySelectorAll('.gtabs button')[{['league','fa','lc'].index(ct)}].click()", 500); shot(f'competitions_{ct}'); ev("Nav.backTo('hub')", 400)
     click('.nextcard .btn'); pg.wait_for_timeout(1000); shot('awards_champion'); click('.cine .btn'); shot('awards_boot'); click('.cine .btn'); shot('awards_you')

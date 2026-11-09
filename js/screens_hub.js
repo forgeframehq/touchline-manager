@@ -31,10 +31,18 @@
     const car = S.career;
     if (car.sacked) { Nav.push('sacked'); return; }
     if (car.alert === 'warning') { car.alert = null; G.save(); Nav.card({ title: 'Board meeting', body: `<p class="center">${esc(car.inbox[0] ? car.inbox[0].text : 'The board want better results.')}</p>`, buttons: [{ label: 'Understood' }] }); return; }
+    if (car.jobOffer) { const k = G.club(car.jobOffer.club); Nav.card({ title: 'Job offer', body: `<div class="center"><span class="crest" style="width:72px;height:80px;display:inline-block">${Art.crest(k)}</span><p><b>${esc(k.name)}</b> (${esc(WORLD.divisions[k.div].name)}) want you as their new manager.</p><p class="note">Reputation ${k.rep} vs ${G.me().rep} now. Your record comes with you.</p></div>`, buttons: [{ label: 'Stay', ghost: true, go: () => { car.jobOffer = null; G.save(); } }, { label: 'Take the job', hold: true, go: () => { Sim.acceptJob(car); G.save(); Nav.reset('unveil'); } }] }); return; }
+    if (car.events && car.events.length) { eventCard(car, car.events[0]); return; }
+    if (car.recordFlash && car.recordFlash.length) { const r = car.recordFlash.shift(); G.save(); Sound.play('ach'); Nav.toast('🏆 ' + r); }
     if (!S.prefs.tutorial) { G.setPrefs({ tutorial: true });
       Nav.card({ title: 'Your office', body: `<p>Five areas along the bottom: <b>Office, Squad, Tactics, Market</b> and <b>Club</b>.</p><p>Your next match is always on the Office. Swipe or use the arrows to flip pages; tap anything for details.</p><p>Win matches to earn <b>coins</b> for training boosts.</p>`, buttons: [{ label: 'Got it' }] }); }
   }
 
+  function eventCard(car, ev) {
+    const box = el('div', 'stack'); box.innerHTML = `<p class="center" style="margin:0 0 4px">${esc(ev.text)}</p>`;
+    ev.options.forEach(o => box.appendChild(Nav.button({ label: o.label, go: () => { Nav.closeCard(); const msg = Sim.applyEvent(car, ev, o); G.save(); if (msg) Nav.toast(msg); if (o.go && o.go.startsWith('contract:')) Nav.push('contract', { id: +o.go.split(':')[1] }); else Nav.refresh(); } }, 'ans')));
+    Sound.play('phone'); Nav.card({ title: ev.title, body: box, buttons: [], modal: true });
+  }
   function hubMenu() {
     const list = el('div', 'menu-list');
     const items = [['user', 'Manager profile', () => Nav.push('profile')], ['trophy', 'Trophy cabinet', () => Nav.push('cabinet')], ['star', 'Achievements', () => Nav.push('achievements')], ['gear', 'Settings', () => Nav.push('settings')],
@@ -67,7 +75,7 @@
       box.appendChild(nc);
       const conf = Math.round(car.board.confidence);
       const quote = conf >= 80 ? 'The board are delighted with your work.' : conf >= 60 ? 'The board are pleased with progress.' : conf >= 40 ? 'The board expect better results.' : conf >= 25 ? 'The board are unhappy with your leadership.' : 'The board are deeply saddened by your leadership.';
-      const bb = el('button', 'panel boardbanner ' + (conf < 40 ? 'bad' : conf >= 70 ? 'good' : ''), `<span>${esc(quote)}</span><span class="meter"><i style="width:${conf}%"></i></span>`); bb.onclick = () => { H.tab = 'club'; H.sub.club = 'finances'; Nav.swap(); };
+      const bb = el('button', 'panel boardbanner ' + (conf < 40 ? 'bad' : conf >= 70 ? 'good' : ''), `<span>${esc(quote)}</span><span class="meter"><i style="width:${conf}%"></i></span>`); bb.onclick = () => Nav.push('cl_board');
       box.appendChild(bb);
       const dash = el('div', 'fill'); box.appendChild(dash);
       return { el: box, mount: () => { const rows = dash.clientHeight > 330 ? 2 : 1, ih = Math.floor((dash.clientHeight - 40 - (rows - 1) * 8) / rows);
@@ -77,11 +85,7 @@
     tactics(car) { return TacticsUI.view(car); },
     market(car) { return MarketUI.view(car); },
     // ================= Club =================
-    club(car) {
-      const tabs = Nav.subtabs([{ id: 'overview', label: 'Overview' }, { id: 'stadium', label: 'Stadium' }, { id: 'facilities', label: 'Facilities' }, { id: 'youth', label: 'Youth' }, { id: 'finances', label: 'Money' }], H.sub.club, id => { H.sub.club = id; Nav.refresh(); }, true);
-      const c = G.me();
-      return Object.assign({ head: G.phead('club', 'Club', `${c.name} · founded on ambition`, null, 'compact'), tabs }, CLUB[H.sub.club](car, c));
-    },
+    club(car) { return ClubUI.view(car); },
   };
 
 
@@ -105,7 +109,7 @@
       d.innerHTML = title('trophy', 'Competitions', () => Nav.push('competitions')) + out.slice(0, lines).join('');
     } else if (kind === 'finance') {
       const left = car.budget.wage - Sim.wageBill(car);
-      d.innerHTML = title('cash', 'Finances', () => { H.tab = 'club'; H.sub.club = 'finances'; Nav.swap(); }) + [li('State', esc(Sim.finState(car))), li('Transfer budget', Sim.feeLabel(car.budget.transfer)), li('Wage left', `<span class="${left < 0 ? 'bad' : 'good'}">£${left}K</span>`), li('Balance', G.money(car.balances[car.me]))].slice(0, lines).join('');
+      d.innerHTML = title('cash', 'Finances', () => Nav.push('cl_finances')) + [li('State', esc(Sim.finState(car))), li('Transfer budget', Sim.feeLabel(car.budget.transfer)), li('Wage left', `<span class="${left < 0 ? 'bad' : 'good'}">£${left}K</span>`), li('Balance', G.money(car.balances[car.me]))].slice(0, lines).join('');
     } else if (kind === 'stats') {
       const L = Sim.leaders(car), nm = p => p ? esc(G.surname(p.name)) : '—';
       d.innerHTML = title('star', 'Player Stats', () => Nav.push('analyse')) + [li('⚽ ' + nm(L.goals), L.goals ? L.goals.seasonGoals : 0), li('🅰 ' + nm(L.assists), L.assists ? L.assists.ast || 0 : 0), li('★ ' + nm(L.rating), L.rating ? (L.rating.rs / L.rating.rn).toFixed(2) : '—'), li('🟨 ' + nm(L.cards), L.cards ? L.cards.yc || 0 : 0)].slice(0, lines).join('');
@@ -175,8 +179,7 @@
       return { el: el('div', 'stack grow', `<div class="tiles t2 big"><div class="tile">${I('cash')}<span class="tv"><small>Club balance</small><b>${G.money(car.balances[car.me])}</b></span></div><div class="tile">${I('chart')}<span class="tv"><small>Net, home week</small><b class="${f.net >= 0 ? 'good' : 'bad'}">${G.money(f.net)}</b></span></div></div>
         <div class="tiles t2"><div class="tile">${I('market')}<span class="tv"><small>Transfer budget</small><b>${Sim.feeLabel(car.budget.transfer)}</b></span></div><div class="tile">${I('clipboard')}<span class="tv"><small>Wage budget</small><b>£${car.budget.wage}K <span style="font-size:12px" class="${car.budget.wage - Sim.wageBill(car) < 0 ? 'bad' : 'good'}">(${car.budget.wage - Sim.wageBill(car)} left)</span></b></span></div></div>
         <div class="tiles t2"><div class="tile">${I('finances')}<span class="tv"><small>Wages / week</small><b class="bad">${G.money(f.wages)}</b></span></div><div class="tile">${I('ticket')}<span class="tv"><small>Matchday gate</small><b>${G.money(f.gate)}</b></span></div><div class="tile">${I('handshake')}<span class="tv"><small>Commercial / week</small><b>${G.money(f.commercial)}</b></span></div><div class="tile">${I('globe')}<span class="tv"><small>TV / week</small><b>${G.money(f.tv)}</b></span></div></div>
-        <div class="panel"><div class="ptitle">${I('clipboard')}The board's brief</div><p style="font:700 18px var(--serif);margin:0 0 4px">${esc(car.brief.text)}</p><p class="note">Target ${G.ord(car.brief.target)} or better · ${esc(DATA.styles[car.brief.style].label)} football</p></div>
-        <div class="panel stack"><div class="instrow"><small>Board confidence</small><b>${conf}%</b></div><div class="meter"><i style="width:${conf}%"></i></div><div class="instrow"><small>Fan mood</small><b>${Math.round(car.fans)}</b></div><div class="meter"><i style="width:${car.fans}%"></i></div></div>`) };
+`) };
     },
   };
 
@@ -264,5 +267,5 @@
       mount: () => Nav.pager(box, { key: 'cab', items: t, cols: 3, itemH: w => Math.round(w * 1.35), gap: 8, empty: 'Empty shelves. Win something!', render: x => el('div', 'gtile', `<span style="width:70%;height:55%">${Art.trophy(x.kind)}</span><b style="font-size:13px">${esc(x.label)}</b><small>${G.seasonLabel(x.season)}</small>`) }) };
   });
 
-  window.HubUI = { H };
+  window.HubUI = { H, CLUB };
 })();

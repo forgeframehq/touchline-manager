@@ -17,6 +17,7 @@ const Sim = (() => {
     const keys = POS[p.pos] ? POS[p.pos].keys : POS.CM.keys, attr = {};
     for (const a of DATA.attributes) attr[a] = clamp(Math.round(keys.includes(a) ? p.rating + rng.int(-3, 4) : p.rating - rng.int(10, 24)), 5, 99);
     if (p.pos !== 'GK') { attr.handling = rng.int(8, 20); attr.reflexes = rng.int(8, 22); }
+    if (p.ib) for (const k in p.ib) if (attr[k] != null) attr[k] = clamp(attr[k] + p.ib[k], 5, 99);
     return attr;
   }
   function makePlayer(c, src, id, extra) {
@@ -67,7 +68,8 @@ const Sim = (() => {
   }
   function strength(team) {
     const st = DATA.styles[team.tactics.style], xi = team.xi, bonus = team.bonus || 0;
-    const mean = (ps, key) => ps.length ? ps.reduce((s, p) => s + (p.attr[key] + bonus) * (st[key] || 1) * (p.fitness / 100) * (.85 + p.morale / 700), 0) / ps.length : 30;
+    const sh = p => p.sharp == null ? 1 : .94 + p.sharp * .0006;
+    const mean = (ps, key) => ps.length ? ps.reduce((s, p) => s + (p.attr[key] + bonus) * (st[key] || 1) * (p.fitness / 100) * (.85 + p.morale / 700) * sh(p), 0) / ps.length : 30;
     const by = g => xi.filter(p => p.grp === g), gk = by('GK')[0];
     return {
       gk: gk ? (gk.rating + bonus) * (gk.fitness / 100) : 30,
@@ -207,6 +209,7 @@ const Sim = (() => {
       else if (m.gH < m.gA) { a.w++; h.l++; a.pts += 3; h.form.push('L'); a.form.push('W'); }
       else { h.d++; a.d++; h.pts++; a.pts++; h.form.push('D'); a.form.push('D'); }
     }
+    if (career.deduct) for (const id in career.deduct) if (rows[id]) rows[id].pts -= career.deduct[id];
     return Object.values(rows).sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.id.localeCompare(y.id));
   }
   function position(career, clubId) { const c = career.clubs.find(k => k.id === clubId); return table(career, c.div).findIndex(r => r.id === clubId) + 1; }
@@ -504,7 +507,7 @@ const Sim = (() => {
   }
   function takeJob(career, clubId) {
     const old = career.me; career.me = clubId; career.sacked = false; career.board = { confidence: DATA.board.start, warned: false }; career.fans = DATA.fans.start;
-    career.manager.sackings++; career.manager.clubs.push({ id: clubId, name: clubName(career, clubId), from: career.season });
+    if (!career.voluntary) career.manager.sackings++; career.voluntary = false; career.manager.clubs.push({ id: clubId, name: clubName(career, clubId), from: career.season });
     career.brief = brief(career, clubId);
     news(career, `${clubName(career, clubId)} appoint ${career.manager.name}, formerly of ${clubName(career, old)}.`, 'board');
     mail(career, 'board', 'The Chairman', `Welcome to ${clubName(career, clubId)}. Our brief: ${career.brief.text.toLowerCase()}.`);

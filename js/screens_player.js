@@ -40,7 +40,11 @@
       spec.action = { label: 'Contract', icon: 'clipboard', go: () => Nav.push('contract', { id: p.id }) };
     } else {
       const on = car.shortlist.includes(p.id);
-      spec.extra = [{ label: on ? '★ Listed' : '☆ Shortlist', go: () => { car.shortlist = on ? car.shortlist.filter(x => x !== p.id) : car.shortlist.concat(p.id); G.save(); Nav.refresh(); } }];
+      spec.extra = [{ label: on ? '★' : '☆', go: () => { car.shortlist = on ? car.shortlist.filter(x => x !== p.id) : car.shortlist.concat(p.id); G.save(); Nav.refresh(); } },
+        { label: 'More', go: () => { const list = el('div', 'menu-list');
+          list.appendChild(Nav.button({ icon: 'chart', label: 'Compare with my players', go: () => { Nav.closeCard(); Nav.push('compare', { a: p.id }); } }, 'mi'));
+          if (p.club) list.appendChild(Nav.button({ icon: 'handshake', label: 'Ask to take him on loan', go: () => { Nav.closeCard(); const r = Sim.loanIn(car, p.id); G.save(); if (r.ok) { Sound.play('stamp'); Nav.toast(`${G.surname(p.name)} joins on loan`); Nav.back(); } else { Sound.play('error'); Nav.toast(r.why, 'bad'); } } }, 'mi'));
+          Nav.card({ title: G.surname(p.name), body: list, buttons: [{ label: 'Close', ghost: true }] }); } }];
       const agreed = car.neg[p.id] && car.neg[p.id].fee;
       if (!known) spec.action = { label: 'Scout', icon: 'binoculars', go: () => { const w = Sim.scout(car, p.id); G.save(); Sound.play('phone'); Nav.toast(w ? `Scout report in ${w} week${w > 1 ? 's' : ''}` : 'Scout report ready'); Nav.refresh(); } };
       else if (!p.club) spec.action = { label: 'Offer Terms', icon: 'handshake', go: () => { const j = Sim.willJoin(car, p); if (!j.ok) { Sound.play('error'); Nav.toast(j.why, 'bad'); return; } Nav.push('terms', { id: p.id, fee: 0 }); } };
@@ -67,7 +71,7 @@
         <div><small>Av. rating</small><b>${pr.avg != null ? pr.avg.toFixed(2) : '—'}</b></div>
         <div style="grid-column:1/-1"><small>Form (last 5)</small><b class="formnums">${form}</b></div>
         <div><small>Condition · Morale</small><b>${Math.round(p.fitness)}% · ${p.morale >= 80 ? 'Superb' : p.morale >= 65 ? 'Good' : p.morale >= 45 ? 'Okay' : 'Poor'}</b></div>
-        <div><small>Cards</small><b>${p.yc || 0} yellow</b></div>
+        <div><small>Happiness · Sharpness</small><b>${p.club === car.me ? `<span class="${(p.happy || 70) < 40 ? 'bad' : (p.happy || 70) >= 70 ? 'good' : ''}">${(p.happy || 70) >= 80 ? 'Delighted' : (p.happy || 70) >= 60 ? 'Content' : (p.happy || 70) >= 40 ? 'Unsettled' : 'Unhappy'}</span> · ${Math.round(p.sharp == null ? 70 : p.sharp)}%` : '—'}</b></div>
         <div><small>Career</small><b>${p.apps} apps · ${p.goals} gls</b></div>
       </div>`;
     return w;
@@ -77,10 +81,28 @@
     const list = el('div', 'menu-list');
     const add = (icon, label, go, opts) => list.appendChild(Nav.button(Object.assign({ icon, label, go: () => { if (!opts || !opts.hold) Nav.closeCard(); go(); } }, opts || {}), 'mi'));
     add('clipboard', 'Offer new contract', () => Nav.push('contract', { id: p.id }));
+    add('megaphone', 'Talk to him', () => talkCard(car, p));
+    add('dumbbell', 'Individual training', () => Nav.push('cl_training'));
+    add('youth', p.res ? 'Recall from reserves' : 'Move to reserves', () => { Sim.setReserve(car, p.id, !p.res); G.save(); Nav.toast(p.res ? `${G.surname(p.name)} joins the reserves` : `${G.surname(p.name)} is back in the first team`); Nav.refresh(); });
+    add('market', 'Loan him out', () => loanCard(car, p));
+    add('chart', 'Compare', () => Nav.push('compare', { a: p.id }));
     add('market', p.listed ? 'Remove from transfer list' : 'Transfer list him', () => { Sim.listPlayer(car, p.id, !p.listed); G.save(); Nav.toast(p.listed ? `${G.surname(p.name)} is on the transfer list` : 'Removed from the list'); Nav.refresh(); });
     add('star', car.captain === p.id ? 'Already captain' : 'Make captain', () => { car.captain = p.id; G.save(); Sound.play('stamp'); Nav.refresh(); });
     add('exit', 'Release (hold)', () => { Nav.closeCard(); if (Sim.release(car, p.id)) { G.save(); Nav.toast(`${p.name} released`); Nav.back(); } else Nav.toast(`You need at least ${D.season.squadMin} players`, 'bad'); }, { hold: true });
     Nav.card({ title: G.surname(p.name), body: list, buttons: [{ label: 'Close', ghost: true }] });
+  }
+  function talkCard(car, p) {
+    const list = el('div', 'menu-list');
+    for (const [k, label] of [['praise', 'Praise his form'], ['criticise', 'Criticise his form'], ['promise', 'Promise more playing time'], ['future', 'Discuss his future'], ['leave', 'Tell him he can leave']])
+      list.appendChild(Nav.button({ label, go: () => { Nav.closeCard(); const r = Sim.talk(car, p.id, k); G.save(); Nav.card({ title: G.surname(p.name), body: `<p class="center">${esc(r.text)}</p>`, buttons: [{ label: 'OK', go: () => Nav.refresh() }] }); } }, 'mi'));
+    Nav.card({ title: `Talk to ${G.surname(p.name)}`, body: list, buttons: [{ label: 'Cancel', ghost: true }] });
+  }
+  function loanCard(car, p) {
+    const offers = Sim.loanOffers(car, p.id), list = el('div', 'stack');
+    if (!offers.length) list.innerHTML = '<p class="center note">No clubs want him on loan right now.</p>';
+    offers.forEach(o => { const k = G.club(o.club), b = el('button', 'offer', `<span class="crest">${Art.crest(k)}</span><span class="who" style="min-width:0"><b>${esc(k.name)}</b><small>${esc(WORLD.divisions[k.div].name)} · role: ${o.time} · they pay ${o.share}% of wages</small></span>`);
+      b.onclick = () => { Nav.closeCard(); if (Sim.loanOut(car, p.id, o)) { G.save(); Sound.play('stamp'); Nav.toast(`${G.surname(p.name)} joins ${k.name} on loan`); Nav.back(); } else Nav.toast(`You need at least ${D.season.squadMin} players`, 'bad'); }; list.appendChild(b); });
+    Nav.card({ title: 'Loan offers', body: list, buttons: [{ label: 'Cancel', ghost: true }] });
   }
   window.PlayerUI = { P };
 })();

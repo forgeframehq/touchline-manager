@@ -7,7 +7,7 @@
   const Q = { view: 'coach', filter: 'all', sort: null, dir: -1, pick: null, strip: 'xi', mode: null, sel: new Set() };
   const VIEWS = ['coach', 'general', 'condition', 'contract', 'stats', 'development'];
   const VNAME = { coach: 'Coach Report', general: 'General', condition: 'Condition', contract: 'Contract', stats: 'Stats', development: 'Development' };
-  const FILTERS = [['all', 'All players'], ['GK', 'Goalkeepers'], ['DF', 'Defenders'], ['MF', 'Midfielders'], ['FW', 'Forwards'], ['picked', 'Picked'], ['out', 'Unavailable'], ['listed', 'Listed'], ['expiring', 'Expiring'], ['youth', 'Youth (21-)']];
+  const FILTERS = [['all', 'All players'], ['GK', 'Goalkeepers'], ['DF', 'Defenders'], ['MF', 'Midfielders'], ['FW', 'Forwards'], ['picked', 'Picked'], ['out', 'Unavailable'], ['res', 'Reserves'], ['listed', 'Listed'], ['expiring', 'Expiring'], ['youth', 'Youth (21-)']];
   const fee = k => Sim.feeLabel(k);
 
   function band(car) { const d = WORLD.divisions[G.me().div], b = d.band || [62, 72]; return [b[0] - 14, b[1] + 8]; }
@@ -19,7 +19,7 @@
   function cols(car) {
     return {
       coach: [['Abi', p => p.rating, p => miniStars(starsOf(p.rating, car))], ['Pot', p => p.pot, p => miniStars(starsOf(p.pot, car))], ['Av R', avg, p => p.rn ? avg(p).toFixed(2) : '–'], ['Value', p => Sim.value(p), p => fee(Math.round(Sim.value(p) * 1000))]],
-      general: [['Age', p => p.age, p => p.age], ['Nat', p => p.nat || 'ZZZ', p => p.nat ? Flags.svg(p.nat, 20, 13) : '–'], ['Ovr', p => p.rating, p => `<b class="${G.rcls(p.rating)}">${p.rating}</b>`], ['Morale', p => p.morale, p => { const [t, c] = mood(p.morale); return `<span class="${c}">${t}</span>`; }]],
+      general: [['Age', p => p.age, p => p.age], ['Nat', p => p.nat || 'ZZZ', p => p.nat ? Flags.svg(p.nat, 20, 13) : '–'], ['Happy', p => p.happy == null ? 70 : p.happy, p => { const h = p.happy == null ? 70 : p.happy; return `<span class="${h < 40 ? 'bad' : h >= 70 ? 'good' : ''}">${h >= 80 ? 'Great' : h >= 60 ? 'Fine' : h >= 40 ? 'Meh' : 'Upset'}</span>`; }], ['Morale', p => p.morale, p => { const [t, c] = mood(p.morale); return `<span class="${c}">${t}</span>`; }]],
       condition: [['Cond', p => p.fitness, p => `<span class="${p.fitness < 70 ? 'bad' : p.fitness < 85 ? 'warn' : 'good'}">${Math.round(p.fitness)}%</span>`], ['Sharp', p => p.sharp == null ? 70 : p.sharp, p => `${Math.round(p.sharp == null ? 70 : p.sharp)}%`],
         ['Status', p => (p.injured ? 2 : 0) + (p.ban ? 1 : 0), p => p.injured ? `<span class="bad">Inj ${p.injured}w</span>` : p.ban ? '<span class="bad">Ban</span>' : '<span class="good">Fit</span>'], ['Morale', p => p.morale, p => { const [t, c] = mood(p.morale); return `<span class="${c}">${t}</span>`; }]],
       contract: [['Wage', p => p.wage, p => `£${p.wage}K`], ['Expires', p => p.con || 0, p => { const y = Sim.yearsLeft(car, p); return `<span class="${y <= 0 ? 'bad' : y === 1 ? 'warn' : ''}">${p.con || '—'}</span>`; }],
@@ -60,7 +60,7 @@
     head.replaceChildren(el('span', 'pk', 'Pkd'), sortBtn('Name', 'name'), sortBtn('Pos', 'pos'), ...C.map((c, i) => sortBtn(c[0], 'c' + i)));
     head.children[1].classList.add('nm'); head.children[2].classList.add('ps');
     box.appendChild(head);
-    let list = sq.filter(p => Q.filter === 'all' ? true : ['GK', 'DF', 'MF', 'FW'].includes(Q.filter) ? p.grp === Q.filter : Q.filter === 'picked' ? slotOf.has(p.id) : Q.filter === 'out' ? (p.injured || p.ban) : Q.filter === 'listed' ? p.listed : Q.filter === 'expiring' ? Sim.yearsLeft(car, p) <= 1 : p.age <= 21);
+    let list = sq.filter(p => Q.filter === 'all' ? true : ['GK', 'DF', 'MF', 'FW'].includes(Q.filter) ? p.grp === Q.filter : Q.filter === 'picked' ? slotOf.has(p.id) : Q.filter === 'out' ? (p.injured || p.ban) : Q.filter === 'res' ? p.res : Q.filter === 'listed' ? p.listed : Q.filter === 'expiring' ? Sim.yearsLeft(car, p) <= 1 : p.age <= 21);
     const gi = { GK: 0, DF: 1, MF: 2, FW: 3 };
     const keyF = Q.sort === 'name' ? p => G.surname(p.name) : Q.sort === 'pos' ? p => gi[p.grp] * 10 + ['CB', 'LB', 'RB', 'CDM', 'CM', 'LM', 'RM', 'CAM', 'LW', 'RW', 'ST'].indexOf(p.pos) : Q.sort ? C[+Q.sort.slice(1)][1] : null;
     list.sort((a, b) => { if (keyF) { const x = keyF(a), y = keyF(b); if (x !== y) return (x > y ? 1 : -1) * Q.dir; }
@@ -70,9 +70,9 @@
     let sx = null; tbl.addEventListener('pointerdown', e => { sx = e.clientX; }); tbl.addEventListener('pointerup', e => { if (sx == null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 70 && e.target.closest('.pg-grid') == null) { Q.view = VIEWS[(VIEWS.indexOf(Q.view) + (dx < 0 ? 1 : VIEWS.length - 1)) % VIEWS.length]; Q.sort = null; Sound.play('swipe'); Nav.refresh(); } });
     const narrow = innerWidth < 390;
     return { el: box, mount: () => Nav.pager(tbl, { key: 'sq2' + Q.filter + Q.sort + Q.dir, items: list, cols: 1, itemH: 33, gap: 2, empty: 'No players match this filter.', render: p => {
-      const sl = slotOf.get(p.id), tag = sl ? (sl[0] === 'x' ? codes[sl[1]] : 'S' + (sl[1] + 1)) : '';
+      const sl = slotOf.get(p.id), tag = sl ? (sl[0] === 'x' ? codes[sl[1]] : 'S' + (sl[1] + 1)) : p.res ? 'RES' : '';
       const r = el('button', 'sqrow' + (sl ? (sl[0] === 'x' ? ' xi' : ' sub') : '') + (Q.sel.has(p.id) ? ' sel' : '') + (p.injured || p.ban ? ' out' : ''));
-      r.innerHTML = `<span class="pk">${Q.mode === 'select' ? `<i class="ck">${Q.sel.has(p.id) ? '✓' : ''}</i>` : tag ? `<i class="tg ${sl[0]}">${tag}</i>` : ''}</span><span class="nm"><em>${p.num || ''}</em>${esc(narrow ? short(p.name) : p.name)}${p.legend ? ' <b class="gold">★</b>' : ''}${p.injured ? ' <b class="bad">+</b>' : ''}</span><span class="ps">${esc(Sim.posString(p))}</span>${C.map(c => `<span class="c">${c[2](p)}</span>`).join('')}`;
+      r.innerHTML = `<span class="pk">${Q.mode === 'select' ? `<i class="ck">${Q.sel.has(p.id) ? '✓' : ''}</i>` : tag ? `<i class="tg ${sl ? sl[0] : 'r'}">${tag}</i>` : ''}</span><span class="nm"><em>${p.num || ''}</em>${esc(narrow ? short(p.name) : p.name)}${p.legend ? ' <b class="gold">★</b>' : ''}${p.injured ? ' <b class="bad">+</b>' : ''}</span><span class="ps">${esc(Sim.posString(p))}</span>${C.map(c => `<span class="c">${c[2](p)}</span>`).join('')}`;
       r.onclick = () => {
         if (Q.pick) { if (p.injured || p.ban) { Sound.play('error'); Nav.toast(`${G.surname(p.name)} is unavailable`, 'bad'); return; } Sim.pickSlot(car, Q.pick, p.id); Sound.play('card'); Q.pick = null; G.save(); Nav.refresh(); return; }
         if (Q.mode === 'select') { if (Q.sel.has(p.id)) Q.sel.delete(p.id); else Q.sel.add(p.id); Sound.play('tap'); Nav.refresh(); return; }
@@ -95,6 +95,8 @@
     const add = (icon, label, go, hold) => list.appendChild(Nav.button({ icon, label, hold, go: () => { Nav.closeCard(); go(); } }, 'mi'));
     add('market', `Transfer list (${ids.length})`, () => { ps.forEach(p => Sim.listPlayer(car, p.id, true)); done(`${ids.length} listed`); });
     add('check', 'Remove from transfer list', () => { ps.forEach(p => Sim.listPlayer(car, p.id, false)); done('Removed from the list'); });
+    add('youth', 'Move to reserves', () => { ps.forEach(p => Sim.setReserve(car, p.id, true)); done(`${ids.length} moved to the reserves`); });
+    add('squad', 'Recall to first team', () => { ps.forEach(p => Sim.setReserve(car, p.id, false)); done('Recalled'); });
     add('exit', 'Release (hold)', () => { let n = 0; for (const p of ps) if (Sim.release(car, p.id)) n++; done(n ? `${n} released` : `Squad minimum is ${D.season.squadMin}`); }, true);
     const done = msg => { Q.sel.clear(); Q.mode = null; G.save(); Nav.toast(msg); Nav.refresh(); };
     Nav.card({ title: `${ids.length} player${ids.length > 1 ? 's' : ''}`, body: list, buttons: [{ label: 'Cancel', ghost: true }] });

@@ -13,12 +13,12 @@
   Nav.define('prematch', () => {
     const car = S.career, fx = Sim.nextMatch(car), H = G.club(fx.h), A = G.club(fx.a), opp = fx.home ? A : H, me = G.me();
     const tH = Sim.teamFor(car, fx.h), tA = Sim.teamFor(car, fx.a), dd = Sim.difficulty(car, opp.id);
-    const danger = Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating)[0];
+    const danger = Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating)[0], info = Sim.matchInfo(car, fx.h, fx.a);
     Sound.crowd(.7); Sound.music(false);
     const b = el('div', 'walk');
     const col = (t, c) => `<div class="lu"><div class="lu-h">${esc(short(c))}<small>${esc(c.id === car.me ? Sim.tac(car).shape : car.tactics[c.id].formation)}</small></div>${t.xi.map((p, i) => `<div class="lu-r"><span class="no">${c.id === car.me ? (p.num || i + 1) : i + 1}</span><span class="nm">${esc(G.surname(p.name))}</span><span class="ps">${p.pos}</span></div>`).join('')}</div>`;
     b.innerHTML = `<div class="panel hero vsbig"><div class="vc"><span class="crest">${Art.crest(H)}</span><b>${esc(G.shortName(H))}</b></div><div class="vm"><b>VS</b><small>${esc(fx.comp)}<br>${fx.kind === 'cup' ? esc(fx.round) : 'Week ' + (car.week + 1)}</small></div><div class="vc"><span class="crest">${Art.crest(A)}</span><b>${esc(G.shortName(A))}</b></div></div>
-      <div class="note center">${esc(H.stadium)} · ${H.capacity.toLocaleString()}${opp.id === me.rival ? ' · <b class="gold">DERBY DAY</b>' : ''}</div>
+      <div class="note center oneline">${opp.id === me.rival ? '<b class="gold">DERBY</b> · ' : ''}${info.icon} ${esc(info.weather)} · Ref ${esc(info.ref)} (${esc(info.strict)}) · ${esc(H.stadium)}</div>
       <div class="lineups">${col(tH, H)}${col(tA, A)}</div>
       <div class="scout"><div><small>Danger man</small><b>${danger ? esc(danger.name) + ' ' + danger.rating : '—'}</b></div><div><small>Difficulty</small><b class="diff">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= dd ? 'on' : ''}"></i>`).join('')}</b></div><button class="boostbtn" ${car.boost || car.coins < D.coins.boostCost ? 'disabled' : ''}><small>Training boost</small><b class="${car.boost ? 'good' : 'gold'}">${car.boost ? 'Active +' + D.coins.boost : I('coin').replace('class="ic ', 'style="width:15px;height:15px;display:inline;vertical-align:-2px" class="ic ') + ' ' + D.coins.boostCost}</b></button></div>`;
     const bb = b.querySelector('.boostbtn'); bb.dataset.snd = 'coin'; bb.onclick = () => { if (Sim.boostMatch(car)) { G.save(); Nav.toast(`Training boost: +${D.coins.boost} for this match`); Nav.refresh(); } };
@@ -44,7 +44,7 @@
     const nx = Sim.nextMatch(car);
     S.live = nx && nx.kind === 'cup' ? Sim.startCup(car) : Sim.startWeek(car);
     if (!S.live) { Nav.toast('No match to play', 'bad'); Nav.backTo('hub'); return; }
-    S.live.mine = S.live.h === car.me ? 'H' : 'A'; Nav.replace('match');
+    S.live.mine = S.live.h === car.me ? 'H' : 'A'; S.live.info = Sim.matchInfo(car, S.live.h, S.live.a); Nav.replace('match');
   }
   function finish(car, live, replace) {
     const before = car.board.confidence, posBefore = car.week ? Sim.position(car, car.me) : 0;
@@ -147,8 +147,8 @@
     const drawPane = () => {
       pane.innerHTML = '';
       if (tab === 'comm') { pane.appendChild(feedBox); return; }
-      const rows = Math.max(4, Math.floor((pane.clientHeight - 24) / 19));
-      if (tab === 'stats') pane.appendChild(statsBlock(live, H, A, Math.floor((pane.clientHeight - 6) / 25)));
+      const rows = Math.max(4, Math.floor((pane.clientHeight - 30) / 19) - 1);
+      if (tab === 'stats') pane.appendChild(statsBlock(live, H, A, Math.floor((pane.clientHeight - 12) / 27) - 1));
       if (tab === 'ratings') pane.appendChild(ratingsBlock(car, live, H, A, rows));
       if (tab === 'lineups') pane.appendChild(lineupsBlock(car, live, H, A, rows));
     };

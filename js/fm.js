@@ -15,7 +15,7 @@
   function prng(p, salt) { return new RNG((Math.imul(p.id, 2246822519) ^ hash(p.name + salt)) >>> 0); }
   function to20(v) { return clamp(Math.round((v - 18) / 4.1), 1, 20); }
   function fmAttrs(p) {
-    const k = p.id + ':' + p.rating + ':' + p.pos; if (memo.has(k)) return memo.get(k);
+    const k = p.id + ':' + p.rating + ':' + p.pos + ':' + (p.ib ? JSON.stringify(p.ib) : ''); if (memo.has(k)) return memo.get(k);
     const r = prng(p, 'fm'), A = p.attr, out = {};
     const groups = p.grp === 'GK' ? ['goalkeeping', 'mental', 'physical'] : ['technical', 'mental', 'physical'];
     for (const g of groups) { out[g] = {};
@@ -97,7 +97,7 @@
   }
   // my XI from the current tactic: saved ids where still valid, best fits otherwise
   function myXI(career) {
-    const t = tac(career), codes = slotCodes(t), sq = squadOf(career, career.me), ok = p => !p.injured && !p.ban;
+    const t = tac(career), codes = slotCodes(t), sq = squadOf(career, career.me), ok = p => !p.injured && !p.ban && !p.res;
     const used = new Set(), xi = new Array(11).fill(null), byIdm = new Map(sq.map(p => [p.id, p]));
     if (t.ids) t.ids.forEach((id, i) => { const p = byIdm.get(id); if (p && ok(p) && !used.has(id)) { xi[i] = p; used.add(id); } });
     const order = codes.map((c, i) => i).sort((a, b) => (codes[a] === 'GK' ? -1 : 0) - (codes[b] === 'GK' ? -1 : 0));
@@ -179,7 +179,7 @@
         else if (rng.chance(.25)) out.push({ min: m.min, type: 'chance', side, who: scorer.name, sp: corner ? 'corner' : 'free kick' });
       }
       // cards
-      const cardMul = 1 + (t.tm ? t.tm.cards : 0) + ((t.oppMarks && Object.values(t.oppMarks).some(v => v.includes('hard'))) ? .3 : 0);
+      const cardMul = (m.refMul || 1) * (1 + (t.tm ? t.tm.cards : 0)) + ((t.oppMarks && Object.values(t.oppMarks).some(v => v.includes('hard'))) ? .3 : 0);
       if (rng.chance(.021 * cardMul)) {
         const pool = t.xi.filter(p => p.grp !== 'GK'); if (!pool.length) continue;
         const p = rng.pick(pool.concat(pool.filter(q => q.grp === 'DF' || q.pos === 'CDM')));
