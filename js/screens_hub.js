@@ -17,7 +17,7 @@
   }
 
   Nav.define('hub', () => {
-    const car = S.career; Sound.crowd(.3);
+    const car = S.career; Sound.crowd(.3); Sound.music(true);
     if (!car.setp || !car.setp.pens) Sim.autoRoles(car);
     const v = VIEWS[H.tab](car);
     const hdr = el('div'); hdr.appendChild(G.topbar(hubMenu)); if (v.head) hdr.appendChild(v.head);

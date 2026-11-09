@@ -490,3 +490,38 @@ p { margin: 0 0 8px; } .center { text-align: center; } .note { font-size: 13px; 
 .htscore { display: flex; align-items: center; justify-content: center; gap: 16px; } .htscore .crest { width: 44px; height: 50px; } .htscore b { font: 800 34px var(--serif); color: var(--gold); }
 .htstats { display: flex; flex-direction: column; gap: 4px; } .htstats div { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; } .htstats b { font: 700 15px var(--sans); text-align: center; } .htstats small { font: 600 11.5px var(--sans); color: var(--muted); }
 @media (max-height: 700px) { .match-scr .pitch-wrap { max-height: 27vh; } .msb .sb-team .crest { width: 28px; height: 32px; } .msb .sb-led b { font-size: 26px; } .scorers { max-height: 16px; } .rr { height: 16px; font-size: 11.5px; } .srow { height: 19px; } }
+
+/* ===== intro + title (round 7) ===== */
+.intro, .title2 { position: absolute; inset: 0; overflow: hidden; background: #050807; }
+.in-bg, .t2-bg { position: absolute; inset: -4%; background: url(assets/art/st_giant.webp) center 35% / cover no-repeat; filter: brightness(.25) saturate(.7); transition: filter 1.4s ease; animation: drift 24s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: scale(1.06) translate(-1.5%, -1%); } }
+.intro.lit .in-bg { filter: brightness(.75) saturate(1.05); }
+.in-dark { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(5,8,7,.2), rgba(5,8,7,.92) 75%); }
+.in-lights i { position: absolute; top: 9%; width: 120px; height: 120px; margin-left: -60px; border-radius: 50%; background: radial-gradient(circle, rgba(255,250,225,.95) 0, rgba(255,236,170,.45) 18%, rgba(255,236,170,0) 62%); opacity: 0; transform: scale(.4); transition: opacity .25s, transform .4s; }
+.in-lights i.on { opacity: 1; transform: none; animation: flick 3.5s ease-in-out infinite; } @keyframes flick { 50% { opacity: .82; } }
+.in-rays { position: absolute; inset: 0; background: conic-gradient(from 160deg at 50% -10%, transparent 0deg, rgba(255,240,190,.08) 10deg, transparent 20deg, rgba(255,240,190,.06) 30deg, transparent 40deg); opacity: 0; transition: opacity 1.5s; } .intro.lit .in-rays { opacity: 1; }
+.in-haze { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 70%, rgba(255,255,255,.06), transparent 50%), radial-gradient(ellipse at 75% 60%, rgba(255,255,255,.05), transparent 45%); animation: haze 16s ease-in-out infinite alternate; pointer-events: none; } @keyframes haze { to { transform: translateX(-6%); } }
+.in-logo { position: absolute; left: 50%; top: 42%; width: min(86vw, 420px); transform: translate(-50%, -50%) scale(2.4); opacity: 0; filter: drop-shadow(0 10px 30px rgba(0,0,0,.8)); }
+.intro.logo .in-logo { animation: slam .55s cubic-bezier(.3,1.5,.5,1) forwards; } @keyframes slam { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); } 60% { opacity: 1; } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.intro.logo { animation: shake .4s .4s; } @keyframes shake { 20% { transform: translate(4px, -3px); } 40% { transform: translate(-4px, 2px); } 60% { transform: translate(2px, 3px); } 80% { transform: translate(-2px, -1px); } }
+.in-sparks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.in-tap { position: absolute; left: 0; right: 0; bottom: calc(12% + var(--sb)); text-align: center; font: 700 18px Cinzel, var(--serif); letter-spacing: .4em; color: #f6dc8a; opacity: 0; text-shadow: 0 0 18px rgba(231,194,90,.6); }
+.intro.ready .in-tap { animation: tap 1.6s ease-in-out infinite; } @keyframes tap { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+.title2 .t2-bg { filter: brightness(.55) saturate(1); }
+.t2-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,10,7,.55) 0%, rgba(5,10,7,.1) 30%, rgba(5,10,7,.45) 55%, rgba(5,10,7,.96) 82%); }
+.t2-logo { position: absolute; left: 50%; top: calc(3% + var(--st)); width: min(78vw, 360px); transform: translateX(-50%); filter: drop-shadow(0 8px 24px rgba(0,0,0,.8)); animation: logoIn .8s ease-out both; }
+.t2-main { position: absolute; left: 0; right: 0; bottom: calc(46px + var(--sb)); padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+.cont-hero { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; text-align: left; background: linear-gradient(120deg, rgba(231,194,90,.28), rgba(10,26,18,.92) 45%); border: 1.5px solid var(--gold); box-shadow: 0 0 26px rgba(231,194,90,.25), inset 0 1px 0 rgba(255,255,255,.12); position: relative; overflow: hidden; animation: miIn .5s both; }
+.cont-hero .crest { width: 58px; height: 66px; } .cont-hero .ch-t { flex: 1; min-width: 0; } .cont-hero small { display: block; font: 700 11px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.cont-hero b { display: block; font: 800 24px/1.1 var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .cont-hero em { display: block; font: 500 12.5px var(--sans); font-style: normal; color: #d9dfd6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cont-hero > .ic { width: 34px; height: 34px; color: #1c1405; background: var(--goldgrad); border-radius: 50%; padding: 7px 6px 7px 9px; flex: none; }
+.t2-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.t2-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 78px; border-radius: 15px; border: 1px solid var(--golddim); background: linear-gradient(180deg, rgba(20,46,32,.92), rgba(9,25,17,.94)); font: 600 12.5px var(--sans); animation: miIn .45s var(--d, 0ms) both; position: relative; overflow: hidden; }
+.t2-tile .ic { width: 28px; height: 28px; color: var(--gold); } .t2-tile.big { background: var(--goldgrad); color: #1c1405; border-color: #f8e39a; } .t2-tile.big .ic { color: #1c1405; }
+.t2-credits { align-self: center; font: 600 12px var(--sans); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; padding: 6px 14px; }
+.title2 .studio-credit { position: absolute; left: 0; right: 0; bottom: calc(10px + var(--sb)); }
+/* shine sweep on gold buttons */
+.btn:not(.ghost)::after, .bb.act::after, .t2-tile.big::after, .cont-hero::after { content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent); transform: skewX(-20deg); animation: sweep 5s ease-in-out infinite; pointer-events: none; }
+@keyframes sweep { 0%, 70% { left: -60%; } 100% { left: 130%; } }
+.hold::after { content: 'HOLD' !important; position: absolute !important; top: 4px !important; right: 10px !important; left: auto !important; width: auto !important; background: none !important; transform: none !important; animation: none !important; font: 700 8px var(--sans); letter-spacing: .14em; opacity: .6; }
+@media (max-height: 700px) { .t2-logo { width: min(64vw, 300px); } .t2-tile { height: 66px; } .cont-hero b { font-size: 21px; } }

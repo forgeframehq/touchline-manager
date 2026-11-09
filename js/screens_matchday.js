@@ -14,7 +14,7 @@
     const car = S.career, fx = Sim.nextMatch(car), H = G.club(fx.h), A = G.club(fx.a), opp = fx.home ? A : H, me = G.me();
     const tH = Sim.teamFor(car, fx.h), tA = Sim.teamFor(car, fx.a), dd = Sim.difficulty(car, opp.id);
     const danger = Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating)[0];
-    Sound.crowd(.7);
+    Sound.crowd(.7); Sound.music(false);
     const b = el('div', 'walk');
     const col = (t, c) => `<div class="lu"><div class="lu-h">${esc(short(c))}<small>${esc(c.id === car.me ? Sim.tac(car).shape : car.tactics[c.id].formation)}</small></div>${t.xi.map((p, i) => `<div class="lu-r"><span class="no">${c.id === car.me ? (p.num || i + 1) : i + 1}</span><span class="nm">${esc(G.surname(p.name))}</span><span class="ps">${p.pos}</span></div>`).join('')}</div>`;
     b.innerHTML = `<div class="panel hero vsbig"><div class="vc"><span class="crest">${Art.crest(H)}</span><b>${esc(G.shortName(H))}</b></div><div class="vm"><b>VS</b><small>${esc(fx.comp)}<br>${fx.kind === 'cup' ? esc(fx.round) : 'Week ' + (car.week + 1)}</small></div><div class="vc"><span class="crest">${Art.crest(A)}</span><b>${esc(G.shortName(A))}</b></div></div>
@@ -147,9 +147,10 @@
     const drawPane = () => {
       pane.innerHTML = '';
       if (tab === 'comm') { pane.appendChild(feedBox); return; }
-      if (tab === 'stats') pane.appendChild(statsBlock(live, H, A));
-      if (tab === 'ratings') pane.appendChild(ratingsBlock(car, live, H, A));
-      if (tab === 'lineups') pane.appendChild(lineupsBlock(car, live, H, A));
+      const rows = Math.max(4, Math.floor((pane.clientHeight - 24) / 19));
+      if (tab === 'stats') pane.appendChild(statsBlock(live, H, A, Math.floor((pane.clientHeight - 6) / 25)));
+      if (tab === 'ratings') pane.appendChild(ratingsBlock(car, live, H, A, rows));
+      if (tab === 'lineups') pane.appendChild(lineupsBlock(car, live, H, A, rows));
     };
     const say = (min, html, cls) => { lines.unshift(`<p class="${cls || ''}"><b>${String(min).padStart(2, '0')}'</b><span>${html}</span></p>`); if (lines.length > 30) lines.length = 30; feedBox.innerHTML = lines.slice(0, 9).join('');
       if (S.prefs.tts && window.speechSynthesis && (cls === 'goal' || cls === 'red' || cls === 'key' || speed === 1)) { try { const u = new SpeechSynthesisUtterance(html.replace(/<[^>]+>/g, '')); u.rate = 1.1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {} } };
@@ -273,23 +274,23 @@
     return [['Possession', pc(st.H) + '%', pc(st.A) + '%', pc(st.H), pc(st.A)], ['Shots', st.H.shots, st.A.shots], ['On target', st.H.on, st.A.on], ['xG', st.H.xg.toFixed(2), st.A.xg.toFixed(2), st.H.xg, st.A.xg],
       ['Corners', st.H.corners, st.A.corners], ['Fouls', st.H.fouls, st.A.fouls], ['Offsides', st.H.off, st.A.off], ['Cards', st.H.yc + (st.H.rc ? '+' + st.H.rc + '🟥' : ''), st.A.yc + (st.A.rc ? '+' + st.A.rc + '🟥' : ''), st.H.yc, st.A.yc], ['Passes', st.H.passes, st.A.passes]];
   }
-  function statsBlock(m, H, A) {
+  function statsBlock(m, H, A, maxRows) {
     const box = el('div', 'mstats2'), st = m.st || { H: {}, A: {} }; if (!m.st) return box;
-    box.innerHTML = statsRows(st, m.min || m.total).map(([l, a, b, x, y]) => { x = x == null ? +a : x; y = y == null ? +b : y; const t = (x + y) || 1;
+    box.innerHTML = statsRows(st, m.min || m.total).slice(0, maxRows || 99).map(([l, a, b, x, y]) => { x = x == null ? +a : x; y = y == null ? +b : y; const t = (x + y) || 1;
       return `<div class="srow"><b>${a}</b><span><small>${l}</small><i class="bar"><em style="width:${x / t * 100}%;background:${H.kit[0]}"></em><em style="width:${y / t * 100}%;background:${Art.awayKit(H.kit, A.kit)[0]}"></em></i></span><b>${b}</b></div>`; }).join('');
     return box;
   }
-  function ratingsBlock(car, m, H, A) {
+  function ratingsBlock(car, m, H, A, rows) {
     const box = el('div', 'mrates');
     for (const s of ['H', 'A']) { const t = m[s], col = el('div', 'rcol'), list = t.xi.concat((t.squad || []).filter(p => m.played && m.played.has(p.id) && !t.xi.includes(p)));
-      col.innerHTML = `<b class="rh">${esc(short(s === 'H' ? H : A))}</b>` + list.slice(0, 13).map(p => { const r = Sim.liveRating(m, p, s); return `<div class="rr${t.xi.includes(p) ? '' : ' off'}"><span>${esc(G.surname(p.name))}</span><b class="${r >= 7.5 ? 'good' : r < 6 ? 'bad' : ''}">${r != null ? r.toFixed(1) : '–'}</b></div>`; }).join('');
+      col.innerHTML = `<b class="rh">${esc(short(s === 'H' ? H : A))}</b>` + list.slice(0, rows || 13).map(p => { const r = Sim.liveRating(m, p, s); return `<div class="rr${t.xi.includes(p) ? '' : ' off'}"><span>${esc(G.surname(p.name))}</span><b class="${r >= 7.5 ? 'good' : r < 6 ? 'bad' : ''}">${r != null ? r.toFixed(1) : '–'}</b></div>`; }).join('');
       box.appendChild(col); }
     return box;
   }
-  function lineupsBlock(car, m, H, A) {
+  function lineupsBlock(car, m, H, A, rows) {
     const box = el('div', 'mrates');
     for (const s of ['H', 'A']) { const t = m[s], c = s === 'H' ? H : A, col = el('div', 'rcol');
-      col.innerHTML = `<b class="rh">${esc(short(c))} <small>${esc(c.id === car.me ? Sim.tac(car).shape : t.tactics.formation)}</small></b>` + t.xi.map((p, i) => `<div class="rr"><span><em>${c.id === car.me ? (p.num || i + 1) : i + 1}</em> ${esc(G.surname(p.name))}</span><b class="dim">${p.pos}</b></div>`).join('');
+      col.innerHTML = `<b class="rh">${esc(short(c))} <small>${esc(c.id === car.me ? Sim.tac(car).shape : t.tactics.formation)}</small></b>` + t.xi.slice(0, rows || 11).map((p, i) => `<div class="rr"><span><em>${c.id === car.me ? (p.num || i + 1) : i + 1}</em> ${esc(G.surname(p.name))}</span><b class="dim">${p.pos}</b></div>`).join('');
       box.appendChild(col); }
     return box;
   }
@@ -325,10 +326,10 @@
     if (FT.tab === 'summary') pane.innerHTML = `<div class="panel potm"><span class="shirtbox">${potm ? G.shirtOf(potm, null) : ''}</span><div style="min-width:0"><small>Player of the match</small><b>${potm ? esc(potm.name) : '—'}</b><span class="rating">${potm ? m.ratings[potm.id].toFixed(1) : ''}</span></div></div>
       <p class="note center" style="margin:6px 0">“${esc(Comm.punditLine('ft', mine, m))}”</p>
       <div class="tiles t4keep"><div class="tile"><span class="tv"><small>${m.cup ? 'Cup' : 'Position'}</small><b>${m.cup ? (m.winner === car.me ? (car.cups[m.cup].winner === car.me ? 'Winners!' : 'Through') : 'Out') : G.ord(pos)}${!m.cup && p.posBefore ? (pos < p.posBefore ? ' <span class="good">▲</span>' : pos > p.posBefore ? ' <span class="bad">▼</span>' : '') : ''}</b></span></div><div class="tile"><span class="tv"><small>Board</small><b class="${delta >= 0 ? 'good' : 'bad'}">${delta >= 0 ? '+' : ''}${delta}</b></span></div><div class="tile"><span class="tv"><small>Fans</small><b>${Math.round(car.fans)}</b></span></div><div class="tile"><span class="tv"><small>Coins</small><b>+${coins}</b></span></div></div>`;
-    if (FT.tab === 'stats') pane.appendChild(statsBlock(fake, H, A));
+    if (FT.tab === 'stats') pane.appendChild(statsBlock(fake, H, A, innerHeight < 700 ? 7 : 9));
     if (FT.tab === 'ratings') { const box = el('div', 'mrates');
       for (const s of ['H', 'A']) { const cid = s === 'H' ? m.h : m.a, col = el('div', 'rcol'), list = car.players.filter(q => m.ratings[q.id] != null && q.club === cid).sort((a, b) => m.ratings[b.id] - m.ratings[a.id]);
-        col.innerHTML = `<b class="rh">${esc(short(G.club(cid)))}</b>` + list.slice(0, 14).map(q => { const r = m.ratings[q.id]; return `<div class="rr"><span>${q.id === m.potm ? '★ ' : ''}${esc(G.surname(q.name))}</span><b class="${r >= 7.5 ? 'good' : r < 6 ? 'bad' : ''}">${r.toFixed(1)}</b></div>`; }).join(''); box.appendChild(col); }
+        col.innerHTML = `<b class="rh">${esc(short(G.club(cid)))}</b>` + list.slice(0, innerHeight < 700 ? 11 : 14).map(q => { const r = m.ratings[q.id]; return `<div class="rr"><span>${q.id === m.potm ? '★ ' : ''}${esc(G.surname(q.name))}</span><b class="${r >= 7.5 ? 'good' : r < 6 ? 'bad' : ''}">${r.toFixed(1)}</b></div>`; }).join(''); box.appendChild(col); }
       pane.appendChild(box); }
     if (FT.tab === 'analysis') pane.appendChild(analysis(m, H, A));
     return { header: G.titleHeader(res === 'win' ? 'Victory!' : res === 'loss' ? 'Defeat' : 'Draw', m.comp || `${WORLD.divisions[H.div].name} · Week ${car.week}`, 'whistle'), body: b, bg: res === 'win' ? 'bg_dressing' : 'bg_tunnel', back: false,

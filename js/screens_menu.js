@@ -13,22 +13,56 @@
   const ready = code => !!WORLD.countries[code];
   const stepHdr = (n, title, icon) => G.titleHeader(title, `New Career · Step ${n} of 5`, icon || 'flag');
 
+  // ================= Cinematic intro (once per launch, after the studio splash) =================
+  Nav.define('intro', () => {
+    const b = el('div', 'intro');
+    b.innerHTML = `<div class="in-bg"></div><div class="in-dark"></div>
+      <div class="in-lights">${[12, 34, 66, 88].map((x, i) => `<i style="left:${x}%;--d:${i}"></i>`).join('')}</div><div class="in-rays"></div><div class="in-haze"></div>
+      <div class="in-logo">${Logo.svg()}</div><canvas class="in-sparks"></canvas><div class="in-tap">TAP TO START</div>`;
+    let done = false, timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    const finish = () => { if (done) return; done = true; timers.forEach(clearTimeout); b.classList.add('lit', 'logo', 'ready'); Sound.music(true); };
+    const go = () => { if (!b.classList.contains('ready')) { finish(); return; } Sound.play('select'); Nav.replace('title'); };
+    b.onclick = go;
+    return { full: true, body: b, onBack: go, mount: s => {
+      const wait = setInterval(() => { if (document.getElementById('studio')) return; clearInterval(wait); start(s); }, 120);
+    } };
+    function start(s) {
+      Sound.crowd(.25);
+      [0, 1, 2, 3].forEach(i => at(500 + i * 380, () => { b.querySelectorAll('.in-lights i')[i].classList.add('on'); Sound.play('intro_light', { vol: .8 }); if (i === 3) b.classList.add('lit'); }));
+      at(2300, () => { b.classList.add('logo'); Sound.play('intro_slam'); Sound.buzz(40); sparks(s.querySelector('.in-sparks')); Sound.play('intro_roar', { vol: .7 }); Sound.crowd(.5); });
+      at(3000, () => { Sound.music(true); }); at(3400, () => { b.classList.add('ready'); done = true; });
+    }
+  });
+  function sparks(cv) {
+    const r = cv.getBoundingClientRect(); cv.width = r.width * 2; cv.height = r.height * 2; const c = cv.getContext('2d'), P = [];
+    for (let i = 0; i < 90; i++) { const a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 14; P.push({ x: cv.width / 2, y: cv.height * .42, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 4, l: 1 }); }
+    const step = () => { c.clearRect(0, 0, cv.width, cv.height); let alive = 0;
+      for (const p of P) { if (p.l <= 0) continue; alive++; p.x += p.vx; p.y += p.vy; p.vy += .35; p.vx *= .98; p.l -= .018;
+        c.globalAlpha = Math.max(0, p.l); c.fillStyle = p.l > .5 ? '#fff3c4' : '#ffb347'; c.fillRect(p.x, p.y, 3.5, 3.5); }
+      if (alive) requestAnimationFrame(step); }; step();
+  }
+
   // ================= Title / main menu =================
   Nav.define('title', () => {
-    G.theme(null); Sound.crowd(.35);
+    Sound.crowd(.3); Sound.music(true);
     const latest = Save.latest(), meta = latest && Save.slots()[latest];
-    const b = el('div', 'title-scr');
-    b.innerHTML = `<div class="title-wrap"><div id="logo"><span class="l1">Touchline</span><span class="l2">Manager</span></div><div class="menu"></div>
-      <div class="studio-credit"><img src="assets/ui/studio_mark.png" alt=""><span>A Forge Frame game</span></div></div>`;
-    const menu = b.querySelector('.menu');
-    const items = [];
-    if (meta) items.push({ icon: 'play', label: 'Continue', sub: `${meta.name} · ${G.seasonLabel(meta.season)} · Wk ${meta.week + 1}`, big: true, go: () => loadSlot(latest) });
-    items.push({ icon: 'plus', label: 'New Career', big: !meta, go: () => Nav.push('nc_region') });
-    items.push({ icon: 'save', label: 'Load Career', go: () => Nav.push('load'), disabled: !Object.keys(Save.slots()).length });
-    items.push({ icon: 'trophy', label: 'Achievements', go: () => Nav.push('achievements') });
-    items.push({ icon: 'gear', label: 'Settings', go: () => Nav.push('settings') });
-    items.push({ icon: 'info', label: 'Credits', go: () => Nav.push('credits') });
-    items.forEach((it, i) => { const x = Nav.button(Object.assign({}, it, { sub: null }), 'mi' + (it.big ? ' big' : '')); if (it.sub) x.querySelector('span').insertAdjacentHTML('beforeend', `<small>${esc(it.sub)}</small>`); x.insertAdjacentHTML('beforeend', Icons.svg('chevron')); x.style.setProperty('--d', i * 60 + 'ms'); if (it.disabled) x.disabled = true; menu.appendChild(x); });
+    const b = el('div', 'title2');
+    const bg = meta && meta.cap ? Art.stadiumImg(meta.cap) : 'assets/art/st_giant.webp';
+    b.innerHTML = `<div class="t2-bg" style="background-image:url(${bg})"></div><div class="t2-shade"></div><div class="in-haze"></div>
+      <div class="t2-logo">${Logo.svg({ compact: true })}</div><div class="t2-main"></div>
+      <div class="studio-credit"><img src="assets/ui/studio_mark.png" alt=""><span>A Forge Frame game</span></div>`;
+    const main = b.querySelector('.t2-main');
+    if (meta) {
+      const c = WORLD.club(meta.club) || { id: meta.club, kit: meta.kit, short: meta.short, name: meta.name };
+      const hero = el('button', 'cont-hero', `<span class="crest">${Art.crest({ id: meta.club, kit: meta.kit, short: meta.short })}</span><span class="ch-t"><small>Continue career</small><b>${esc(meta.name)}</b><em>${G.seasonLabel(meta.season)} · Week ${meta.week + 1} · ${meta.pos ? G.ord(meta.pos) : '—'}${meta.next ? ' · next: ' + esc(meta.next) : ''}</em></span>${Icons.svg('play')}`);
+      hero.dataset.snd = 'select'; hero.onclick = () => loadSlot(latest); main.appendChild(hero); void c;
+    }
+    const tiles = el('div', 't2-tiles');
+    const items = [['plus', 'New Career', () => Nav.push('nc_region'), false, !meta], ['save', 'Load', () => Nav.push('load'), !Object.keys(Save.slots()).length], ['trophy', 'Awards', () => Nav.push('achievements')], ['gear', 'Settings', () => Nav.push('settings')]];
+    items.forEach(([icon, label, go, dis, big], i) => { const t = el('button', 't2-tile' + (big ? ' big' : ''), `${Icons.svg(icon)}<span>${label}</span>`); t.style.setProperty('--d', i * 70 + 'ms'); if (dis) t.disabled = true; t.onclick = go; tiles.appendChild(t); });
+    main.appendChild(tiles);
+    const cr = el('button', 't2-credits', 'Credits'); cr.onclick = () => Nav.push('credits'); main.appendChild(cr);
     return { full: true, body: b };
   });
   function loadSlot(n) {
@@ -68,6 +102,8 @@
     const p = S.prefs, body = el('div', 'settings');
     body.append(
       cycler('Match speed', [[1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']], p.speed, v => G.setPrefs({ speed: v })),
+      cycler('Music', [[0, 'Off'], [.3, 'Low'], [.6, 'High']], p.music == null ? .5 : p.music, v => { G.setPrefs({ music: v }); Sound.music(true); }),
+      cycler('Title track', [[1, 'Anthem'], [2, 'Cinematic'], [3, 'Stadium rock']], p.track || 1, v => { G.setPrefs({ track: v }); Sound.music(true); }),
       cycler('Commentary voice', [[true, 'On'], [false, 'Off']], p.voice !== false, v => G.setPrefs({ voice: v })),
       cycler('Read commentary aloud', [[false, 'Off'], [true, 'On']], !!p.tts, v => G.setPrefs({ tts: v })),
       cycler('Sound effects', [[0, 'Off'], [.4, 'Low'], [.8, 'High']], p.sfx, v => G.setPrefs({ sfx: v })),
@@ -75,7 +111,6 @@
       cycler('Haptics', [[true, 'On'], [false, 'Off']], p.haptics, v => G.setPrefs({ haptics: v })),
       cycler('Difficulty', [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], p.difficulty, v => { G.setPrefs({ difficulty: v }); if (S.career) { S.career.difficulty = v; G.save(); } }),
     );
-    body.appendChild(el('p', 'note center', 'Difficulty changes how strong rival clubs play. Settings save automatically.'));
     return { header: G.titleHeader('Settings', 'Saved automatically', 'gear'), body };
   });
 

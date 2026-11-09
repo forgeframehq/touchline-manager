@@ -3,7 +3,7 @@
 (() => {
   Nav.init({ quit: () => Nav.reset('title') });
   // paint crests and shirts from the sprite sheets before the first screen (falls back to drawn crests after 4 s)
-  Promise.race([Art.preload(), new Promise(r => setTimeout(r, 4000))]).then(() => { Nav.reset('title'); window.TLM_READY = true; });
+  Promise.race([Art.preload(), new Promise(r => setTimeout(r, 4000))]).then(() => { Nav.reset(window.TLM_SKIP_INTRO ? 'title' : 'intro'); window.TLM_READY = true; });
   // keep the app silent in the background (Capacitor)
   const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
   if (App && App.addListener) App.addListener('appStateChange', st => Sound.crowd(st.isActive ? .3 : 0));

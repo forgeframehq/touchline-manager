@@ -6,7 +6,8 @@ const Save = {
   slots() { try { return JSON.parse(localStorage.getItem(DATA.slotsKey) || '{}'); } catch (e) { return {}; } },
   meta(career) {
     const c = career.clubs.find(k => k.id === career.me), pos = (typeof Sim !== 'undefined') ? Sim.position(career, career.me) : 0;
-    return { club: c.id, name: c.name, kit: c.kit, short: c.short, div: c.div, season: career.season, week: career.week, pos, manager: career.manager.name, at: Date.now() };
+    let next = ''; try { const nx = Sim.nextMatch(career); if (nx) { const o = career.clubs.find(k => k.id === (nx.home ? nx.a : nx.h)); next = (o ? o.short.replace(/\d/g, '') : '') + (nx.home ? ' (H)' : ' (A)'); } } catch (e) {}
+    return { club: c.id, name: c.name, kit: c.kit, short: c.short, div: c.div, season: career.season, week: career.week, pos, manager: career.manager.name, at: Date.now(), cap: c.capacity, next };
   },
   store(career) {
     if (!career || !career.slot) return false;

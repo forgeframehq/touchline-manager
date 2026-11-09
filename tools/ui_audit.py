@@ -56,7 +56,7 @@ CHECK_JS = r"""
     if (hit) issues.push({ kind: 'overlap', el: label(a.e) + ' × ' + label(b.e), text: txt(a.e) + ' | ' + txt(b.e), box: hit.map(Math.round) });
   }
   // 3 off-screen
-  for (const e of all) { if (e.closest('.toast,.ach,.rays,.travel') || e.classList.contains('rays')) continue; const r = e.getBoundingClientRect();
+  for (const e of all) { if (e.closest('.toast,.ach,.rays,.travel,.in-bg,.t2-bg,.in-lights,.in-haze,.in-logo') || e.classList.contains('rays')) continue; const r = e.getBoundingClientRect();
     if ((r.right > vw + 1 || r.left < -1 || r.bottom > vh + 1) && r.width < vw * 1.5 && getComputedStyle(e).position !== 'fixed') { const par = e.parentElement && e.parentElement.getBoundingClientRect(); if (par && (par.right > vw + 1 || par.left < -1 || par.bottom > vh + 1)) continue; issues.push({ kind: 'offscr', el: label(e), text: txt(e), box: box(r) }); } }
   // 4 row alignment: direct children of row containers
   for (const row of scope.flatMap(r => [...r.querySelectorAll('.gtabs,.bnav,.tiles,.qtiles,.toggles,.facs,.seg,.boardrow,.vsrow,.topbar,.bar,.scout,.instr')])) {
@@ -102,8 +102,9 @@ def flows(pg, shot):
     """Drive the game through every screen; shot(name) audits whatever is showing."""
     def click(sel, i=0): pg.locator(sel).nth(i).click(); pg.wait_for_timeout(450)
     def ev(js, wait=550): pg.evaluate(js); pg.wait_for_timeout(wait)
+    shot('intro'); pg.mouse.click(180, 300); pg.wait_for_timeout(300); pg.mouse.click(180, 300); pg.wait_for_timeout(900)
     shot('title')
-    click('.mi', 0); shot('nc_region'); click('.gtile', 0); shot('nc_country'); click('.gtile', 0); shot('nc_league')
+    click('.t2-tile', 0); shot('nc_region'); click('.gtile', 0); shot('nc_country'); click('.gtile', 0); shot('nc_league')
     click('.lrow', 0); shot('nc_club'); click('.cg', 3); shot('nc_clubcard'); click('.card-btns .btn', 1); shot('nc_manager')
     pg.fill('.tinput', 'Sudhi'); click('.bb.act'); shot('nc_confirm'); click('.bb.act'); pg.wait_for_timeout(1700); shot('unveil')
     ev("TLM.G.setPrefs({tutorial:true}); const c=TLM.career; for(let i=0;i<5;i++) TLM.Sim.playWeek(c); TLM.G.save(); TLM.HubUI = HubUI; Nav.reset('hub')", 900)
@@ -149,7 +150,7 @@ def flows(pg, shot):
     click('.nextcard .btn'); pg.wait_for_timeout(1000); shot('awards_champion'); click('.cine .btn'); shot('awards_boot'); click('.cine .btn'); shot('awards_you')
     click('.cine .btn'); pg.wait_for_timeout(700)
     ev("TLM.career.sacked=true; Nav.reset('sacked')", 900); shot('sacked')
-    ev("TLM.career.sacked=false; Nav.reset('title')", 700); shot('title_continue'); click('.mi', 2); shot('load')
+    ev("TLM.career.sacked=false; Nav.reset('title')", 700); shot('title_continue'); click('.t2-tile', 1); shot('load')
 
 
 def main():
@@ -165,7 +166,7 @@ def main():
                 errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
                 # hide transient popups so they don't mask the screen underneath
                 pg.add_init_script("window.addEventListener('load',()=>{const s=document.createElement('style');s.textContent='.toast,.ach,#saving,.travel{display:none!important} *{animation-duration:0s!important;transition-duration:0s!important}';document.head.appendChild(s)})")
-                pg.goto(f'http://127.0.0.1:{port}/index.html'); pg.wait_for_function('window.TLM_READY', timeout=20000); pg.wait_for_timeout(2300)
+                pg.goto(f'http://127.0.0.1:{port}/index.html'); pg.wait_for_function('window.TLM_READY', timeout=20000); pg.wait_for_timeout(4500)
                 shots = []; rep = report[size] = {'errors': errs, 'screens': {}}
                 def shot(name):
                     if only and name not in only: return
