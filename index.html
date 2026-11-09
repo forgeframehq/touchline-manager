@@ -6,11 +6,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0f1a12">
+<meta name="theme-color" content="#1b1610">
 <title>Touchline Manager</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Oswald:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,55 +31,74 @@
   })();
 </script>
 
-<!-- Title screen -->
-<section id="title" class="screen">
-  <h1>Touchline<br>Manager</h1>
-  <p class="tagline">Pick a club. Build a side. Earn the badge.</p>
-  <div class="menu">
-    <button id="btn-new" class="big">New Career</button>
-    <button id="btn-continue" class="big" disabled>Continue</button>
-    <button id="btn-quick" class="big">Quick Match</button>
+<!-- ============ Title ============ -->
+<section id="title" class="screen title">
+  <div class="title-panel">
+    <div id="logo"><span class="l1">Touchline</span><span class="l2">Manager</span></div>
+    <p class="tagline">Pick a club. Build a side. Lift the trophy.</p>
+    <button id="btn-new" class="mbtn primary"><span>New Career</span><small>Take charge of any club</small></button>
+    <button id="btn-continue" class="mbtn" disabled><img src="assets/ui/icons/clock.png" alt=""><span>Continue</span><small id="continue-sub">No saved career</small></button>
+    <button id="btn-quick" class="mbtn"><img src="assets/ui/icons/special.png" alt=""><span>Quick Match</span><small>One game, no save</small></button>
+    <div class="studio-credit"><img src="assets/ui/studio_mark.png" alt=""><span>A Forge Frame game</span></div>
   </div>
-  <div class="studio-credit"><img src="assets/ui/studio_mark.png" alt=""><span>A Forge Frame game</span></div>
 </section>
 
-<!-- Club picker -->
+<!-- ============ Club picker ============ -->
 <section id="pick" class="screen hidden">
-  <header class="bar"><button class="back" data-go="title">‹</button><h2>Choose your club</h2></header>
-  <div id="club-list" class="list"></div>
-</section>
-
-<!-- Club hub: one screen, one job each (tabs below) -->
-<section id="hub" class="screen hidden">
-  <header class="bar"><h2 id="hub-club"></h2><span id="hub-week"></span></header>
-  <div id="hub-body"></div>
-  <nav class="tabs">
-    <button data-tab="squad" class="on">Squad</button>
-    <button data-tab="tactics">Tactics</button>
-    <button data-tab="fixtures">Fixtures</button>
-    <button data-tab="table">Table</button>
-    <button data-tab="finance">Finance</button>
-  </nav>
-  <button id="btn-play" class="big play">Play next match ›</button>
-</section>
-
-<!-- Match screen -->
-<section id="match" class="screen hidden">
-  <header class="bar score"><span id="m-home"></span><b id="m-score">0 – 0</b><span id="m-away"></span><em id="m-clock">0'</em></header>
-  <div id="pitch"><canvas id="pitch-canvas"></canvas></div>
-  <div id="m-feed" class="feed"></div>
-  <div class="row">
-    <button id="m-speed" class="small">1×</button>
-    <button id="m-tactics" class="small">Tactics</button>
-    <button id="m-skip" class="small">Skip to end</button>
+  <div class="sheet">
+    <header class="sheet-head"><button class="back" data-go="title" aria-label="Back">‹</button><h2>Choose Your Club</h2></header>
+    <div class="sheet-body" id="club-list"></div>
+    <footer class="sheet-foot"><button id="btn-take" class="play grand" disabled>Take Charge</button></footer>
   </div>
 </section>
 
-<!-- Results -->
-<section id="result" class="screen hidden">
-  <h2 id="r-head"></h2>
-  <div id="r-summary"></div>
-  <button id="btn-back-hub" class="big">Back to club ›</button>
+<!-- ============ Club hub ============ -->
+<section id="hub" class="screen hidden">
+  <div class="sheet">
+    <header class="sheet-head"><span id="hub-crest" class="head-crest"></span><h2 id="hub-club"></h2><span id="hub-week" class="chip"></span></header>
+    <div class="sheet-body" id="hub-body"></div>
+    <footer class="sheet-foot hub-foot">
+      <button id="btn-play" class="play grand">Play Match</button>
+      <nav class="tabs">
+        <button data-tab="squad" class="on"><i class="shirt"></i><span>Squad</span></button>
+        <button data-tab="tactics"><img src="assets/ui/icons/rally.png" alt=""><span>Tactics</span></button>
+        <button data-tab="fixtures"><img src="assets/ui/icons/menu.png" alt=""><span>Fixtures</span></button>
+        <button data-tab="table"><img src="assets/ui/icons/laurel.png" alt=""><span>Table</span></button>
+        <button data-tab="finance"><img src="assets/ui/icons/gold.png" alt=""><span>Finance</span></button>
+      </nav>
+    </footer>
+  </div>
+</section>
+
+<!-- ============ Match ============ -->
+<section id="match" class="screen hidden">
+  <div class="sheet">
+    <div class="scoreboard">
+      <div class="sb-team"><span id="m-hcrest"></span><b id="m-home"></b></div>
+      <div class="sb-mid"><b id="m-score">0 – 0</b><em id="m-clock">0'</em></div>
+      <div class="sb-team"><span id="m-acrest"></span><b id="m-away"></b></div>
+    </div>
+    <div class="sheet-body match-body">
+      <section class="frame pitch-frame"><canvas id="pitch-canvas"></canvas></section>
+      <section class="frame feed-frame"><h3 class="ribbon">Commentary</h3><div id="m-feed" class="feed"></div></section>
+    </div>
+    <footer class="sheet-foot">
+      <div class="seg">
+        <button id="m-speed">1×</button>
+        <button id="m-tactics">Tactics</button>
+        <button id="m-skip">Skip to End</button>
+      </div>
+    </footer>
+  </div>
+</section>
+
+<!-- ============ Result ============ -->
+<section id="result" class="screen hidden overlay">
+  <div class="card">
+    <h2 id="r-head"></h2>
+    <div id="r-summary"></div>
+    <button id="btn-back-hub" class="big">Back to Club</button>
+  </div>
 </section>
 
 <script src="js/data.js"></script>

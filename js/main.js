@@ -1,18 +1,19 @@
 // Wiring. Exposes window.TLM so Playwright tests and the balance harness can drive the game through its own API.
 'use strict';
 (() => {
-  const $ = UI.$; let career = Save.load(); let tab = 'squad';
+  const $ = UI.$; let career = Save.load(); let tab = 'squad', quick = false;
   const toHub = t => { tab = t || tab; UI.hub(career, tab); UI.show('hub'); };
 
-  if (career && career.version === DATA.version) $('#btn-continue').disabled = false; else career = null;
+  if (career && career.version === DATA.version) { $('#btn-continue').disabled = false;
+    const c = DATA.clubs.find(k => k.id === career.me); $('#continue-sub').textContent = (c ? c.name : '') + ' · Week ' + (career.week + 1); } else career = null;
 
-  $('#btn-new').onclick = () => { UI.clubList(id => { career = Sim.newCareer((Date.now() & 0xffffffff) >>> 0, id, Save.prefs().difficulty); Save.store(career); toHub('squad'); }); UI.show('pick'); };
-  $('#btn-continue').onclick = () => toHub('squad');
-  $('#btn-quick').onclick = () => { career = Sim.newCareer((Date.now() & 0xffffffff) >>> 0, DATA.clubs[0].id); playNext(false); };
+  $('#btn-new').onclick = () => { UI.clubList(id => { career = Sim.newCareer((Date.now() & 0xffffffff) >>> 0, id, Save.prefs().difficulty); quick = false; Save.store(career); toHub('squad'); }); UI.show('pick'); };
+  $('#btn-continue').onclick = () => { career = Save.load(); quick = false; toHub('squad'); };
+  $('#btn-quick').onclick = () => { const seed = (Date.now() & 0xffffffff) >>> 0; career = Sim.newCareer(seed, DATA.clubs[seed % DATA.clubs.length].id); quick = true; playNext(false); };
   document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => UI.show(b.dataset.go));
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => toHub(b.dataset.tab));
   $('#btn-play').onclick = () => playNext(true);
-  $('#btn-back-hub').onclick = () => { if (career.week >= career.fixtures.length) { alert('Season over! Final table on the Table tab. New seasons come in the next round.'); } toHub('table'); };
+  $('#btn-back-hub').onclick = () => { if (quick) { UI.show('title'); return; } toHub(career.week >= career.fixtures.length ? 'table' : tab); };
 
   function playNext(save) {
     const m = Sim.playWeek(career); if (!m) { toHub('table'); return; }
