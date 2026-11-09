@@ -67,7 +67,30 @@
   function nearestShape(t) { const n = { DF: 0, MF: 0, FW: 0 }; slotCodes(t).forEach(c => { const g = GR.grp[c]; if (g !== 'GK') n[g]++; });
     return Object.keys(D.formations).find(k => D.formations[k].DF === n.DF && D.formations[k].MF === n.MF && D.formations[k].FW === n.FW) || t.shape; }
   // how well a player suits a grid position (1 natural … .55 out of position)
-  function posFit(p, code) { const f = GR.fits[code] || []; const i = f.indexOf(p.pos); if (i === 0) return 1; if (i > 0) return i === 1 ? .93 : .86; return S.grpOf(p.pos) === GR.grp[code] ? .8 : (p.pos === 'GK' || code === 'GK') ? .3 : .6; }
+  // secondary positions (deterministic per player) and FM-style position strings ("D/M R", "AM RLC")
+  const ALT = { GK: [], CB: ['CDM', 'RB', 'LB'], LB: ['LM', 'CB', 'LW'], RB: ['RM', 'CB', 'RW'], CDM: ['CM', 'CB'], CM: ['CDM', 'CAM', 'RM', 'LM'], CAM: ['CM', 'ST', 'LW', 'RW'],
+    LM: ['LW', 'LB', 'CM', 'RM'], RM: ['RW', 'RB', 'CM', 'LM'], LW: ['LM', 'RW', 'ST', 'CAM'], RW: ['RM', 'LW', 'ST', 'CAM'], ST: ['CAM', 'LW', 'RW'] };
+  function positions(p) {
+    if (p._ps && p._ps[0] === p.pos) return p._ps;
+    const r = prng(p, 'pos'), alts = (ALT[p.pos] || []).slice(), n = p.pos === 'GK' ? 0 : r.chance(.25) ? 0 : r.chance(.55) ? 1 : 2, out = [p.pos];
+    for (let i = 0; i < n && alts.length; i++) out.push(alts.splice(r.int(0, Math.min(alts.length - 1, 1 + i)), 1)[0]);
+    Object.defineProperty(p, '_ps', { value: out, enumerable: false, writable: true, configurable: true }); return out;
+  }
+  const FMP = { GK: ['GK', ''], CB: ['D', 'C'], LB: ['D', 'L'], RB: ['D', 'R'], CDM: ['DM', ''], CM: ['M', 'C'], CAM: ['AM', 'C'], LM: ['M', 'L'], RM: ['M', 'R'], LW: ['AM', 'L'], RW: ['AM', 'R'], ST: ['ST', ''] };
+  function posString(p) {
+    const bands = {}, solo = [];
+    for (const q of positions(p)) { const [b, sd] = FMP[q]; if (!sd) { if (!solo.includes(b)) solo.push(b); continue; } bands[b] = bands[b] || new Set(); bands[b].add(sd); }
+    const order = ['D', 'M', 'AM'], groups = {};
+    for (const b of order) if (bands[b]) { const k = ['R', 'L', 'C'].filter(x => bands[b].has(x)).join(''); (groups[k] = groups[k] || []).push(b); }
+    const parts = solo.filter(x => x === 'GK').concat(Object.entries(groups).map(([sd, bs]) => bs.join('/') + ' ' + sd), solo.filter(x => x !== 'GK'));
+    const dm = parts.indexOf('DM'), d = parts.findIndex(x => x.startsWith('D ') || x.startsWith('D/'));
+    return parts.join(', ').replace(/^D C, DM$/, 'D/DM C').replace(/^DM, (M\/AM|M) C$/, 'DM/$1 C');
+  }
+  function posFit(p, code) {
+    const f = GR.fits[code] || [], ps = positions(p); let best = 0;
+    ps.forEach((q, k) => { const i = f.indexOf(q); const v = i === 0 ? 1 : i === 1 ? .93 : i > 1 ? .86 : 0; best = Math.max(best, k ? v * .95 : v); });
+    if (best) return best; return S.grpOf(p.pos) === GR.grp[code] ? .8 : (p.pos === 'GK' || code === 'GK') ? .3 : .6;
+  }
   function roleStars(p, code, roleKey) {
     const R = roleDef(code, roleKey), keys = R[3], v = keys.reduce((s, k) => s + (p.attr[k] || 50), 0) / keys.length;
     return clamp(Math.round(((v * posFit(p, code)) - 45) / 9 * 2) / 2, .5, 5);
@@ -80,8 +103,30 @@
     const order = codes.map((c, i) => i).sort((a, b) => (codes[a] === 'GK' ? -1 : 0) - (codes[b] === 'GK' ? -1 : 0));
     for (const i of order) if (!xi[i]) { const best = sq.filter(p => ok(p) && !used.has(p.id)).sort((a, b) => b.rating * posFit(b, codes[i]) - a.rating * posFit(a, codes[i]) || a.id - b.id)[0]; if (best) { xi[i] = best; used.add(best.id); } }
     t.ids = xi.map(p => p && p.id);
-    const bench = sq.filter(p => ok(p) && !used.has(p.id)).sort((a, b) => b.rating - a.rating).slice(0, D.season.subsOnBench);
+    const bench = [], nb = D.season.subsOnBench;
+    if (t.bench) for (const id of t.bench) { const p = byIdm.get(id); if (p && ok(p) && !used.has(id) && bench.length < nb) { bench.push(p); used.add(id); } }
+    for (const p of sq.filter(p => ok(p) && !used.has(p.id)).sort((a, b) => b.rating - a.rating)) { if (bench.length >= nb) break; bench.push(p); used.add(p.id); }
+    t.bench = bench.map(p => p.id);
     return { xi: xi.filter(Boolean), bench, codes };
+  }
+  function pickSlot(career, slot, pid) {
+    const t = tac(career); myXI(career); const xi = t.ids, bn = t.bench, kind = slot[0], k = +slot.slice(1);
+    const where = id => { const a = xi.indexOf(id); if (a >= 0) return ['x', a]; const b = bn.indexOf(id); return b >= 0 ? ['s', b] : null; };
+    const at = kind === 'x' ? xi[k] : bn[k], from = where(pid);
+    if (from) { if (from[0] === 'x') xi[from[1]] = at; else bn[from[1]] = at; }
+    if (kind === 'x') xi[k] = pid; else bn[k] = pid;
+    t.ids = xi.map(x => x == null ? null : x); t.bench = bn.filter(x => x != null); return true;
+  }
+  // squad numbers: keep the ones players have, give new players the lowest free number
+  function assignNumbers(career, clubId) {
+    const sq = squadOf(career, clubId || career.me), used = new Set(sq.filter(p => p.num).map(p => p.num));
+    const pref = { GK: [1, 13, 31], DF: [2, 3, 4, 5, 6, 12, 15, 16, 22, 24], MF: [8, 6, 7, 10, 14, 16, 17, 18, 20, 23], FW: [9, 11, 7, 10, 19, 21, 29] };
+    for (const p of sq.slice().sort((a, b) => b.rating - a.rating)) { if (p.num) continue;
+      let n = (pref[p.grp] || []).find(x => !used.has(x)); if (!n) { n = 2; while (used.has(n)) n++; } p.num = n; used.add(n); }
+  }
+  function setNumber(career, pid, n) {
+    const p = byId(career, pid), other = squadOf(career, career.me).find(q => q.num === n && q.id !== pid);
+    if (other) other.num = p.num; p.num = n;
   }
   function swapIntoXI(career, outId, inId) {
     const t = tac(career); myXI(career); const i = t.ids.indexOf(outId); if (i < 0) return false;
@@ -250,7 +295,7 @@
       S.news(career, `${p.name} joins ${me(career).name} from ${S.clubName(career, p.club)} for ${feeLabel(fee)}.`, 'transfer'); }
     else S.news(career, `${p.name} signs for ${me(career).name} on a free transfer.`, 'transfer');
     if (p.legend) { career.stats.legendsSigned++; career.fans = clamp(career.fans + D.fans.legendSigned, 0, 100); }
-    p.club = career.me; p.wage = wage; p.con = career.season + years; p.status = status; p.morale = 85; p.listed = false;
+    p.club = career.me; p.wage = wage; p.con = career.season + years; p.status = status; p.morale = 85; p.listed = false; p.num = 0; assignNumbers(career);
     delete career.neg[pid]; career.shortlist = career.shortlist.filter(x => x !== pid);
     career.transfers.unshift({ season: career.season, week: career.week, pid, name: p.name, from: p.club, fee, dir: 'in' });
     return { ok: true };
@@ -419,14 +464,17 @@
 
   // ================= career hooks =================
   HK.newCareer = (career, rng) => {
+    for (const p of career.players) p.r0 = p.rating;
     for (const p of career.players) if (p.club) p.con = career.season + 1 + Math.min(4, Math.max(0, Math.round((30 - p.age) / 3 + rng.int(-1, 1))));
     freeAgentPool(career, rng);
     const base = career.tactics[career.me], shape = D.shapes[base.formation] ? base.formation : '4-2-3-1';
     career.tac = { slot: 0, slots: [newTactic('Plan A', shape, base.mentality), newTactic('Plan B', '4-4-2', 'balanced'), newTactic('Protect lead', '5-4-1', 'defensive')] };
     career.scouted = {}; career.shortlist = []; career.offers = []; career.neg = {}; career.transfers = [];
-    setBudgets(career); initCups(career);
+    setBudgets(career); initCups(career); assignNumbers(career);
   };
   HK.newSeason = (career, summary, rng) => {
+    for (const p of career.players) { p.r0 = p.rating; if (p.club !== career.me) p.num = 0; }
+    assignNumbers(career);
     setBudgets(career); initCups(career); career.neg = {}; career.offers = [];
     for (const p of career.players) { p.ast = 0; p.yc = 0; p.rs = 0; p.rn = 0; p.ban = 0; }
     const top = career.players.filter(p => !p.club).length; if (top < 40) freeAgentPool(career, rng.fork('fa' + career.season));
@@ -450,7 +498,7 @@
     return { goals: top('seasonGoals'), assists: top('ast'), cards: top('yc'), rating: rated };
   }
 
-  Object.assign(Sim, { chemistry, fmAttrs, profile, statusOf, yearsLeft, contractEnd, tac, newTactic, rolesFor, roleDef, slotCodes, posFit, roleStars, fmXI: myXI, swapIntoXI, tmods, syncTactics, defaultRole,
+  Object.assign(Sim, { positions, posString, pickSlot, assignNumbers, setNumber, chemistry, fmAttrs, profile, statusOf, yearsLeft, contractEnd, tac, newTactic, rolesFor, roleDef, slotCodes, posFit, roleStars, fmXI: myXI, swapIntoXI, tmods, syncTactics, defaultRole,
     setBudgets, wageBill, wageDemand, expectedStatus, contractVerdict, offerContract, knows, scout, inWindow, deadlineDay, nextWindow, asking, bid, feeLabel, willJoin, signPlayer,
     listPlayer, acceptOffer, counterOffer, rejectOffer, search, initCups, cupRoundName, cupDue, myCupTie, startCup, finishCup, nextMatch, odds, finState, leaders });
 })();
