@@ -1,0 +1,6 @@
+node_modules/
+www/
+build/
+__pycache__/
+*.pyc
+tools/.kie_upload_cache.json
