@@ -6,3 +6,4 @@ __pycache__/
 tools/.kie_upload_cache.json
 assets/art/src/
 audit/
+assets/3d/*.b64.txt

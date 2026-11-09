@@ -56,7 +56,13 @@ export function mount(box, club, opts = {}) {
     opts.onReady && opts.onReady(name);
   };
   if (cache.has(name)) done(cache.get(name));
-  else new FBXLoader(manager).load(`assets/3d/st_${name}.fbx`, obj => { cache.set(name, obj); done(obj); }, undefined, e => opts.onError && opts.onError(e));
+  else {
+    const loader = new FBXLoader(manager), ok = obj => { cache.set(name, obj); done(obj); };
+    // the APK ships .fbx; the web build (which can't serve .fbx) ships base64 text copies
+    loader.load(`assets/3d/st_${name}.fbx`, ok, undefined, () => fetch(`assets/3d/st_${name}.b64.txt`).then(r => { if (!r.ok) throw new Error('missing'); return r.text(); })
+      .then(t => { const bin = atob(t.trim()), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i); ok(loader.parse(buf.buffer, 'assets/3d/')); })
+      .catch(e => opts.onError && opts.onError(e)));
+  }
   const loop = () => { if (!alive) return; if (!box.isConnected) { alive = false; controls.dispose(); renderer.dispose(); return; } controls.update(); renderer.render(scene, cam); raf = requestAnimationFrame(loop); };
   loop();
   return {
