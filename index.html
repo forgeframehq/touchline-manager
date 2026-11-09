@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <!-- Touchline Manager. Copyright (c) 2026 Sudhi and Forge Frame. All rights reserved. -->
+  <!-- Touchline Manager. Copyright (c) 2026 Sudhi and Forge Frame. All rights reserved. Private build. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1b1610">
+<meta name="theme-color" content="#0b1210">
 <title>Touchline Manager</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;600&family=Share+Tech+Mono&family=Caveat+Brush&family=Cinzel:wght@600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,78 +31,100 @@
   })();
 </script>
 
-<!-- ============ Title ============ -->
-<section id="title" class="screen title">
-  <div class="title-panel">
+<!-- ============ Title: floodlit stadium ============ -->
+<section id="title" class="screen night">
+  <svg class="stadium" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs>
+      <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff8dc" stop-opacity=".95"/><stop offset=".25" stop-color="#ffe9a8" stop-opacity=".45"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient>
+      <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4" stop-opacity=".22"/><stop offset="1" stop-color="#fff3c4" stop-opacity="0"/></linearGradient>
+      <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f6b34"/><stop offset="1" stop-color="#1c4422"/></linearGradient>
+      <pattern id="stripes" width="40" height="300" patternUnits="userSpaceOnUse"><rect width="20" height="300" fill="#ffffff" opacity=".05"/></pattern>
+    </defs>
+    <polygon points="38,40 0,300 150,300" fill="url(#beam)"/><polygon points="362,40 250,300 400,300" fill="url(#beam)"/>
+    <polygon points="110,62 60,300 200,300" fill="url(#beam)" opacity=".7"/><polygon points="290,62 200,300 340,300" fill="url(#beam)" opacity=".7"/>
+    <path d="M0 170 Q200 120 400 170 V215 H0 Z" fill="#141a26"/>
+    <path d="M0 182 Q200 140 400 182 V215 H0 Z" fill="#1b2232"/>
+    <g fill="#ffffff" opacity=".18">
+      <circle cx="40" cy="185" r="1"/><circle cx="70" cy="176" r="1"/><circle cx="96" cy="170" r="1"/><circle cx="130" cy="164" r="1"/><circle cx="160" cy="160" r="1"/><circle cx="190" cy="158" r="1"/><circle cx="220" cy="158" r="1"/><circle cx="252" cy="161" r="1"/><circle cx="284" cy="165" r="1"/><circle cx="315" cy="171" r="1"/><circle cx="342" cy="177" r="1"/><circle cx="370" cy="185" r="1"/>
+    </g>
+    <polygon points="70,215 330,215 400,300 0,300" fill="url(#grass)"/><polygon points="70,215 330,215 400,300 0,300" fill="url(#stripes)"/>
+    <g fill="none" stroke="#e9f5e6" stroke-opacity=".55" stroke-width="1.2">
+      <polygon points="88,222 312,222 372,296 28,296"/><line x1="200" y1="222" x2="200" y2="296"/><ellipse cx="200" cy="254" rx="34" ry="12"/>
+    </g>
+    <g stroke="#2a3140" stroke-width="3"><line x1="38" y1="44" x2="38" y2="190"/><line x1="362" y1="44" x2="362" y2="190"/><line x1="110" y1="66" x2="110" y2="170"/><line x1="290" y1="66" x2="290" y2="170"/></g>
+    <g fill="#e8e6dc"><rect x="26" y="34" width="24" height="10" rx="2"/><rect x="350" y="34" width="24" height="10" rx="2"/><rect x="100" y="57" width="20" height="8" rx="2"/><rect x="280" y="57" width="20" height="8" rx="2"/></g>
+    <circle cx="38" cy="39" r="34" fill="url(#glow)"/><circle cx="362" cy="39" r="34" fill="url(#glow)"/><circle cx="110" cy="61" r="24" fill="url(#glow)"/><circle cx="290" cy="61" r="24" fill="url(#glow)"/>
+  </svg>
+  <div class="title-wrap">
     <div id="logo"><span class="l1">Touchline</span><span class="l2">Manager</span></div>
-    <p class="tagline">Pick a club. Build a side. Lift the trophy.</p>
-    <button id="btn-new" class="mbtn primary"><span>New Career</span><small>Take charge of any club</small></button>
-    <button id="btn-continue" class="mbtn" disabled><img src="assets/ui/icons/clock.png" alt=""><span>Continue</span><small id="continue-sub">No saved career</small></button>
-    <button id="btn-quick" class="mbtn"><img src="assets/ui/icons/special.png" alt=""><span>Quick Match</span><small>One game, no save</small></button>
+    <p class="tagline">Your club. Your rules. Your history.</p>
+    <div class="menu">
+      <button id="btn-new" class="btn big">New Career</button>
+      <button id="btn-continue" class="btn ghost big" disabled><span>Continue</span><small id="continue-sub">No saved career</small></button>
+    </div>
     <div class="studio-credit"><img src="assets/ui/studio_mark.png" alt=""><span>A Forge Frame game</span></div>
   </div>
 </section>
 
-<!-- ============ Club picker ============ -->
-<section id="pick" class="screen hidden">
-  <div class="sheet">
-    <header class="sheet-head"><button class="back" data-go="title" aria-label="Back">‹</button><h2>Choose Your Club</h2></header>
-    <div class="sheet-body" id="club-list"></div>
-    <footer class="sheet-foot"><button id="btn-take" class="play grand" disabled>Take Charge</button></footer>
-  </div>
+<!-- ============ New career ============ -->
+<section id="pick" class="screen room hidden">
+  <header class="topbar"><button class="iconbtn" data-go="title" aria-label="Back">‹</button><h1>New Career</h1></header>
+  <div class="body" id="pick-body"></div>
+  <footer class="foot" id="pick-foot">
+    <label class="switch"><input type="checkbox" id="legends-on" checked><i></i><span><b>Include legends</b><small>356 greats at their peak join the world</small></span></label>
+    <button id="btn-take" class="btn big" disabled>Take Charge</button>
+  </footer>
 </section>
 
 <!-- ============ Club hub ============ -->
-<section id="hub" class="screen hidden">
-  <div class="sheet">
-    <header class="sheet-head"><span id="hub-crest" class="head-crest"></span><h2 id="hub-club"></h2><span id="hub-week" class="chip"></span></header>
-    <div class="sheet-body" id="hub-body"></div>
-    <footer class="sheet-foot hub-foot">
-      <button id="btn-play" class="play grand">Play Match</button>
-      <nav class="tabs">
-        <button data-tab="squad" class="on"><i class="shirt"></i><span>Squad</span></button>
-        <button data-tab="tactics"><img src="assets/ui/icons/rally.png" alt=""><span>Tactics</span></button>
-        <button data-tab="fixtures"><img src="assets/ui/icons/menu.png" alt=""><span>Fixtures</span></button>
-        <button data-tab="table"><img src="assets/ui/icons/laurel.png" alt=""><span>Table</span></button>
-        <button data-tab="finance"><img src="assets/ui/icons/gold.png" alt=""><span>Finance</span></button>
-      </nav>
-    </footer>
-  </div>
+<section id="hub" class="screen room hidden">
+  <header class="topbar club"><span id="hub-crest" class="crest"></span><div class="tt"><h1 id="hub-club"></h1><small id="hub-sub"></small></div><span id="hub-week" class="chip"></span></header>
+  <div id="next-strip" class="next-strip"></div>
+  <div class="body" id="hub-body"></div>
+  <div class="playbar"><button id="btn-play" class="btn big">Play Match</button></div>
+  <nav class="tabs">
+    <button data-tab="squad" class="on"><svg viewBox="0 0 32 32"><path d="M11 4l5 3 5-3 8 5-3 6-3-1.5V28H9V13.5L6 15 3 9z"/></svg><span>Squad</span></button>
+    <button data-tab="tactics"><svg viewBox="0 0 32 32"><rect x="5" y="4" width="22" height="25" rx="2"/><path d="M10 10l4 4m0-4l-4 4M22 20a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0M13 22c3-6 6-8 9-9" fill="none" stroke-width="2"/></svg><span>Tactics</span></button>
+    <button data-tab="fixtures"><svg viewBox="0 0 32 32"><rect x="4" y="7" width="24" height="21" rx="3"/><path d="M4 13h24M10 4v6M22 4v6" fill="none" stroke-width="2.4"/></svg><span>Fixtures</span></button>
+    <button data-tab="table"><svg viewBox="0 0 32 32"><path d="M9 4h14v6a7 7 0 0 1-14 0zM9 6H4c0 5 2 7 5 7M23 6h5c0 5-2 7-5 7M13 20h6v4h-6zM10 28h12" fill="none" stroke-width="2.4"/></svg><span>Table</span></button>
+    <button data-tab="club"><svg viewBox="0 0 32 32"><path d="M3 27h26M5 27V13l11-7 11 7v14M11 27v-8h10v8" fill="none" stroke-width="2.4"/></svg><span>Club</span></button>
+  </nav>
 </section>
 
-<!-- ============ Match ============ -->
-<section id="match" class="screen hidden">
-  <div class="sheet">
-    <div class="scoreboard">
-      <div class="sb-team"><span id="m-hcrest"></span><b id="m-home"></b></div>
-      <div class="sb-mid"><b id="m-score">0 – 0</b><em id="m-clock">0'</em></div>
-      <div class="sb-team"><span id="m-acrest"></span><b id="m-away"></b></div>
-    </div>
-    <div class="sheet-body match-body">
-      <section class="frame pitch-frame"><canvas id="pitch-canvas"></canvas></section>
-      <section class="frame feed-frame"><h3 class="ribbon">Commentary</h3><div id="m-feed" class="feed"></div></section>
-    </div>
-    <footer class="sheet-foot">
-      <div class="seg">
-        <button id="m-speed">1×</button>
-        <button id="m-tactics">Tactics</button>
-        <button id="m-skip">Skip to End</button>
-      </div>
-    </footer>
-  </div>
+<!-- ============ Market ============ -->
+<section id="market" class="screen room hidden">
+  <header class="topbar"><button class="iconbtn" data-hub aria-label="Back">‹</button><h1>Market</h1><span id="mk-budget" class="chip"></span></header>
+  <div class="body" id="market-body"></div>
 </section>
 
-<!-- ============ Result ============ -->
-<section id="result" class="screen hidden overlay">
-  <div class="card">
-    <h2 id="r-head"></h2>
-    <div id="r-summary"></div>
-    <button id="btn-back-hub" class="big">Back to Club</button>
+<!-- ============ Match: floodlit night ============ -->
+<section id="match" class="screen night hidden">
+  <div class="scoreboard">
+    <div class="sb-team"><span id="m-hcrest" class="crest"></span><b id="m-home"></b></div>
+    <div class="sb-led"><b id="m-score">0-0</b><em id="m-clock">00'</em></div>
+    <div class="sb-team"><span id="m-acrest" class="crest"></span><b id="m-away"></b></div>
   </div>
+  <div class="match-body">
+    <div class="pitch-wrap"><canvas id="pitch-canvas"></canvas></div>
+    <div class="feed" id="m-feed"></div>
+  </div>
+  <footer class="foot row3">
+    <button id="m-speed" class="btn ghost">1×</button>
+    <button id="m-shout" class="btn ghost">Shout</button>
+    <button id="m-skip" class="btn ghost">Skip</button>
+  </footer>
 </section>
+
+<!-- ============ Overlays: result, season end, sacked, player, inbox ============ -->
+<section id="sheet" class="screen overlay hidden"><div class="card" id="sheet-card"></div></section>
 
 <script src="js/data.js"></script>
 <script src="js/rng.js"></script>
+<script src="js/world.js"></script>
+<script src="js/names.js"></script>
+<script src="js/packs/eng_clubs.js"></script>
+<script src="js/packs/eng_players.js"></script>
+<script src="js/packs/legends.js"></script>
 <script src="js/save.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/ui.js"></script>
