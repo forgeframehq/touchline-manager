@@ -78,7 +78,7 @@
       const right = el('div', 'stack'); right.style.minHeight = '0';
       right.appendChild(el('div', 'panel', `<div class="ptitle" style="font-size:15px">Form</div>${formHTML(myForm(car))}`));
       const unread = car.inbox.filter(m => !m.read).length, last = car.inbox[0];
-      const ib = el('button', 'panel grow', `<div class="linkrow">${I('mail')}<b>Inbox</b>${unread ? `<i>${unread}</i>` : ''}</div>${last ? `<small class="note" style="display:block;margin-top:4px;overflow:hidden;max-height:34px">${esc(last.from)}: ${esc(last.text)}</small>` : ''}`);
+      const ib = el('button', 'panel grow', `<div class="linkrow">${I('mail')}<b>Inbox</b>${unread ? `<i>${unread}</i>` : ''}</div>${last ? `<small class="note clamp2" style="margin-top:4px">${esc(last.from)}: ${esc(last.text)}</small>` : ''}`);
       ib.style.textAlign = 'left'; ib.style.overflow = 'hidden'; ib.onclick = () => Nav.push('inbox'); right.appendChild(ib);
       row.append(mt, right); box.appendChild(row);
       if (fx) { const opp = G.club(fx.home ? fx.a : fx.h), sq = Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating), top = sq[0];
@@ -121,7 +121,7 @@
       const items = Sim.freeAgents(car).filter(p => filt === 'all' || p.legend).sort((a, b) => b.rating - a.rating);
       return { head: G.phead('market', 'Transfer Market', `${items.length} available · ${Sim.squadOf(car, car.me).length}/${DATA.season.squadMax} in squad`, null, 'compact'), tabs,
         mount: fill => Nav.pager(fill, { key: 'mk' + filt, items, cols: 1, itemH: 58, gap: 6, empty: 'No free agents right now.', render: p => {
-          const chk = Sim.canSign(car, p), r = G.prow(p, { sub: `£${p.wage}K/wk` + (p.legend ? ' · ' + esc(p.known) : '') }); if (!chk.ok) r.style.opacity = .6; r.onclick = () => Nav.push('player', { id: p.id }); return r; } }) };
+          const chk = Sim.canSign(car, p), r = G.prow(p, { sub: `£${p.wage >= 1000 ? (p.wage / 1000).toFixed(1) + 'M' : p.wage + 'K'}/wk` }); if (!chk.ok) r.style.opacity = .6; r.onclick = () => Nav.push('player', { id: p.id }); return r; } }) };
     },
 
     // ================= Club =================
@@ -138,7 +138,7 @@
     formation(car, tac) {
       const box = el('div', 'stack grow');
       const fkeys = Object.keys(DATA.formations), pkeys = Object.keys(DATA.presets);
-      const row = el('div', ''); row.style.cssText = 'display:grid;grid-template-columns:1fr 1.25fr;gap:7px';
+      const row = el('div', ''); row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:7px';
       const sel = (label, val, onStep) => { const s = el('div', 'selbox'), pv = el('button', '', '‹'), nx = el('button', '', '›'); pv.dataset.snd = nx.dataset.snd = 'swipe'; pv.onclick = () => onStep(-1); nx.onclick = () => onStep(1); s.append(pv, el('b', '', esc(val)), nx); s.title = label; return s; };
       row.append(
         sel('Formation', tac.formation, d => { tac.formation = fkeys[(fkeys.indexOf(tac.formation) + d + fkeys.length) % fkeys.length]; H.sel = null; G.save(); Nav.refresh(); }),

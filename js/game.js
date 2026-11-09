@@ -51,7 +51,7 @@ const G = (() => {
   function prow(p, opts) {
     opts = opts || {};
     const r = el('button', 'prow' + (opts.xi ? ' xi' : ''));
-    r.innerHTML = `${shirtOf(p, opts.num)}<span class="nm"><b>${esc(p.name)}</b><small>${p.legend ? '<span class="legendtag">LEGEND</span>' : ''}${esc(p.pos)} · ${p.age} yrs · ${p.nat ? Flags.svg(p.nat, 15, 10) : ''}${opts.sub ? ' · ' + opts.sub : ''}</small></span>
+    r.innerHTML = `${shirtOf(p, opts.num)}<span class="nm"><b>${esc(p.name)}</b><small>${p.legend ? '<span class="legendtag">LEGEND</span>' : ''}${esc(p.pos)} · ${p.age}${p.legend ? '' : ' yrs'}${p.nat && !p.legend ? ' · ' + Flags.svg(p.nat, 15, 10) : ''}${opts.sub ? ' · ' + opts.sub : ''}</small></span>
       <span class="fitc">${p.injured ? `<small class="inj">INJ ${p.injured}w</small>` : `<div class="meter"><i style="width:${Math.round(p.fitness)}%"></i></div><small>Fitness</small>`}</span><span class="rbadge ${rcls(p.rating)}">${p.rating}</span>`;
     return r;
   }
