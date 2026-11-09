@@ -4,3 +4,4 @@ build/
 __pycache__/
 *.pyc
 tools/.kie_upload_cache.json
+assets/art/src/
