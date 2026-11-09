@@ -4,7 +4,7 @@
 'use strict';
 (() => {
   const el = Nav.el, esc = Nav.esc, S = G.state, I = Icons.svg;
-  const H = { tab: 'office', sub: { squad: 'GK', club: 'overview', market: 'legends', tactics: 'formation' }, sel: null };
+  const H = { tab: 'office', sub: { squad: 'GK', club: 'overview' }, view: 'overview', sel: null };
   const NAV = [['office', 'Office'], ['squad', 'Squad'], ['tactics', 'Tactics'], ['market', 'Market'], ['club', 'Club']];
 
   function bottomNav() {
@@ -49,81 +49,48 @@
   const boardWord = v => v >= 75 ? 'Secure' : v >= 50 ? 'Stable' : v >= 30 ? 'Uneasy' : 'Under pressure';
 
   const VIEWS = {
-    // ================= Office =================
+    // ================= Office: next match + dashboard =================
     office(car) {
-      const c = G.me(), d = WORLD.divisions[c.div], total = car.fixtures[c.div].length, fx = Sim.myFixture(car), b = car.brief, pos = car.week ? Sim.position(car, car.me) : 0;
-      const box = el('div', 'stack grow');
-      box.appendChild(el('div', 'panel objective', `<div class="ob-t"><small>Season objective</small><h2>${esc(b.text)}</h2><p>Target ${G.ord(b.target)} or better · Now ${pos ? G.ord(pos) : '—'}</p></div>
-        <div class="mdshield"><small>Matchday</small><b>${Math.min(car.week + 1, total)}</b><em>of ${total}</em></div>`));
-      // next match hero card
+      const c = G.me(), nx = Sim.nextMatch(car), box = el('div', 'stack grow');
       const nc = el('div', 'panel hero nextcard');
-      if (fx) {
-        const opp = G.club(fx.home ? fx.a : fx.h), dd = Sim.difficulty(car, opp.id), danger = Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating)[0];
-        const L = fx.home ? c : opp, R = fx.home ? opp : c;
-        nc.innerHTML = `<div class="comp">${I('trophy')}${esc(d.name)} · Week ${car.week + 1}${opp.id === c.rival ? ' · Derby' : ''}</div>
-          <div class="vsrow"><div class="side"><span class="crest">${Art.crest(L)}</span><b>${esc(G.shortName(L))}</b></div><div class="mid"><em>${fx.home ? 'HOME' : 'AWAY'}</em><b>VS</b></div><div class="side r"><span class="crest">${Art.crest(R)}</span><b>${esc(G.shortName(R))}</b></div></div>
-          <div class="tip hide-short">Assistant: ${danger ? `watch ${esc(danger.name)} (${danger.rating}).` : ''} Difficulty <span class="diff">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= dd ? 'on' : ''}"></i>`).join('')}</span></div>`;
-        nc.appendChild(Nav.button({ label: 'Play the Match', icon: 'ball', snd: 'select', go: () => Nav.push('prematch') }, 'btn big'));
+      if (nx) {
+        const opp = G.club(nx.home ? nx.a : nx.h), L = G.club(nx.h), R = G.club(nx.a), od = Sim.odds(car, nx.h, nx.a);
+        const oForm = car.results.filter(r => r.season === car.season && (r.h === opp.id || r.a === opp.id)).slice(-5).map(r => { const u = r.h === opp.id ? r.gH : r.gA, t = r.h === opp.id ? r.gA : r.gH; return u > t ? 'W' : u < t ? 'L' : 'D'; });
+        nc.innerHTML = `<div class="comp">${I(nx.kind === 'cup' ? 'trophy' : 'calendar')}${esc(nx.kind === 'cup' ? nx.comp + ' · ' + nx.round : nx.comp + ' · Week ' + (car.week + 1))}${opp.id === c.rival ? ' · Derby' : ''}</div>
+          <div class="vsrow"><div class="side"><span class="crest">${Art.crest(L)}</span><b>${esc(G.shortName(L))}</b></div><div class="mid"><em>${nx.home ? 'HOME' : 'AWAY'}</em><b>VS</b></div><div class="side r"><span class="crest">${Art.crest(R)}</span><b>${esc(G.shortName(R))}</b></div></div>
+          <div class="oddsrow"><span><small>${esc(L.short.replace(/\d/g, ''))}</small><b>${od.h}</b></span><span><small>Draw</small><b>${od.d}</b></span><span><small>${esc(R.short.replace(/\d/g, ''))}</small><b>${od.a}</b></span><span class="hide-short"><small>${esc(opp.short.replace(/\d/g, ''))} form</small><span class="fm">${oForm.map(x => `<i class="${x}"></i>`).join('') || '—'}</span></span></div>`;
+        nc.appendChild(Nav.button({ label: nx.kind === 'cup' ? 'Play the Tie' : 'Play the Match', icon: 'ball', snd: 'select', go: () => Nav.push('prematch') }, 'btn big'));
       } else {
-        nc.innerHTML = `<div class="comp">${I('trophy')}${esc(d.name)}</div><div class="tip" style="margin:14px 0">The league season is complete. Awards night is waiting.</div>`;
+        nc.innerHTML = `<div class="comp">${I('trophy')}${esc(WORLD.divisions[c.div].name)}</div><div class="tip" style="margin:12px 0">The season is complete. Awards night is waiting.</div>`;
         nc.appendChild(Nav.button({ label: 'Finish the Season', icon: 'trophy', go: () => Nav.push('awards') }, 'btn big'));
       }
       box.appendChild(nc);
-      const f = Sim.weekFinance(car, car.me, true);
-      box.appendChild(el('div', 'tiles t4keep hide-short', `<div class="tile">${I('cash')}<span class="tv"><small>Balance</small><b>${G.money(car.balances[car.me])}</b></span></div><div class="tile">${I('finances')}<span class="tv"><small>Wages</small><b>${G.money(f.wages)}</b></span></div>
-        <div class="tile">${I('handshake')}<span class="tv"><small>Board</small><b>${Math.round(car.board.confidence)}%</b></span></div><div class="tile">${I('star')}<span class="tv"><small>Morale</small><b>${morale(car)}</b></span></div>`));
-      const row = el('div', 'grow', ''); row.style.cssText = 'display:grid;grid-template-columns:1.25fr 1fr;gap:9px;min-height:0';
-      const mt = el('button', 'panel', ''); mt.style.cssText = 'padding:8px 8px;display:flex;flex-direction:column;min-height:0;overflow:hidden;text-align:left'; mt.onclick = () => Nav.push('competitions');
-      mt.innerHTML = `<div class="ptitle" style="font-size:15px;margin-bottom:2px">${I('chart')}League<span class="r">${I('chevron')}</span></div><div class="minitable grow"></div>`;
-      const right = el('div', 'stack'); right.style.minHeight = '0';
-      right.appendChild(el('div', 'panel', `<div class="ptitle" style="font-size:15px">Form</div>${formHTML(myForm(car))}`));
-      const unread = car.inbox.filter(m => !m.read).length, last = car.inbox[0];
-      const ib = el('button', 'panel grow', `<div class="linkrow">${I('mail')}<b>Inbox</b>${unread ? `<i>${unread}</i>` : ''}</div>${last ? `<small class="note clamp2" style="margin-top:4px">${esc(last.from)}: ${esc(last.text)}</small>` : ''}`);
-      ib.style.textAlign = 'left'; ib.style.overflow = 'hidden'; ib.onclick = () => Nav.push('inbox'); right.appendChild(ib);
-      row.append(mt, right); box.appendChild(row);
-      if (fx) { const opp = G.club(fx.home ? fx.a : fx.h), sq = Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating), top = sq[0];
-        const sc = el('div', 'panel scoutcard hide-short', `<div class="st"><div class="ptitle" style="font-size:15px;margin:0">${I('binoculars')}Scout Report</div><p>${esc(opp.name)} play ${esc(car.tactics[opp.id].formation)}. Key man: <b>${top ? esc(top.name) : '—'}</b>${top ? ` (${top.pos}, ${top.rating})` : ''}.</p></div><div class="sp"></div>`);
-        box.appendChild(sc); }
-      const q = el('div', 'qtiles');
-      for (const [icon, label, go] of [['calendar', 'Schedule', 'schedule'], ['trophy', 'Competitions', 'competitions'], ['chart', 'Analyse', 'analyse'], ['medical', 'Medical', 'medical']]) { const t = el('button', 'qtile', `${I(icon)}<span>${label}</span>`); t.onclick = () => Nav.push(go); q.appendChild(t); }
-      box.appendChild(q);
-      return { el: box, mount: () => {
-        const mtb = box.querySelector('.minitable'), t = Sim.table(car, c.div), rows = Math.max(1, Math.floor((mtb.clientHeight - 20) / 30)), i = t.findIndex(r => r.id === car.me);
-        const s = Math.max(0, Math.min(t.length - rows, i - Math.floor(rows / 2)));
-        mtb.innerHTML = '<div class="h"><span>#</span><span>Club</span><b style="text-align:right">Pts</b></div>' + t.slice(s, s + rows).map((r, k) => { const cc = G.club(r.id); return `<div class="r ${r.id === car.me ? 'me' : ''}"><span>${s + k + 1}</span><span class="nm"><span class="crest">${Art.crest(cc)}</span>${esc(cc.short.replace(/\d/g, ''))}</span><b>${r.pts}</b></div>`; }).join('');
-      } };
+      const conf = Math.round(car.board.confidence);
+      const quote = conf >= 80 ? 'The board are delighted with your work.' : conf >= 60 ? 'The board are pleased with progress.' : conf >= 40 ? 'The board expect better results.' : conf >= 25 ? 'The board are unhappy with your leadership.' : 'The board are deeply saddened by your leadership.';
+      const bb = el('button', 'panel boardbanner ' + (conf < 40 ? 'bad' : conf >= 70 ? 'good' : ''), `<span>${esc(quote)}</span><span class="meter"><i style="width:${conf}%"></i></span>`); bb.onclick = () => { H.tab = 'club'; H.sub.club = 'finances'; Nav.swap(); };
+      box.appendChild(bb);
+      const dash = el('div', 'fill'); box.appendChild(dash);
+      return { el: box, mount: () => { const rows = dash.clientHeight > 330 ? 2 : 1, ih = Math.floor((dash.clientHeight - 40 - (rows - 1) * 8) / rows);
+        Nav.pager(dash, { key: 'dash', items: DASH, cols: 2, itemH: ih, gap: 8, render: d => dashCard(car, d, ih) }); } };
     },
-
-    // ================= Squad =================
+    // ================= Squad: overview / contracts / stats =================
     squad(car) {
-      const sq = Sim.squadOf(car, car.me), xi = new Set(Sim.myXI(car).xi.map(p => p.id));
-      const groups = [['GK', 'GK'], ['DF', 'DEF'], ['MF', 'MID'], ['FW', 'ATT']];
+      const sq = Sim.squadOf(car, car.me), xi = new Set(Sim.fmXI(car).xi.map(p => p.id));
+      const groups = [['GK', 'GK'], ['DF', 'DEF'], ['MF', 'MID'], ['FW', 'ATT']], VIEWS = [['overview', 'Overview'], ['contract', 'Contracts'], ['stats', 'Stats']];
       const tabs = Nav.subtabs(groups.map(([g, l]) => ({ id: g, label: l, badge: sq.filter(p => p.grp === g).length })), H.sub.squad, id => { H.sub.squad = id; Nav.refresh(); });
+      const vb = el('button', 'fchip', `<small>View</small><b>${VIEWS.find(v => v[0] === H.view)[1]}</b>`); vb.dataset.snd = 'swipe';
+      vb.onclick = () => { H.view = VIEWS[(VIEWS.findIndex(v => v[0] === H.view) + 1) % VIEWS.length][0]; Nav.refresh(); };
       const list = sq.filter(p => p.grp === H.sub.squad).sort((a, b) => (xi.has(b.id) - xi.has(a.id)) || b.rating - a.rating || a.id - b.id);
-      return { head: G.phead('squad', 'Squad', `${sq.length} players · avg ${Math.round(sq.reduce((s, p) => s + p.rating, 0) / sq.length)}`, null, 'compact'), tabs,
-        mount: fill => Nav.pager(fill, { key: 'sq' + H.sub.squad, items: list, cols: 1, itemH: 58, gap: 6, render: p => {
-          const r = G.prow(p, { xi: xi.has(p.id), sub: xi.has(p.id) ? '<span class="tag">XI</span>' : '' }); r.onclick = () => Nav.push('player', { id: p.id }); return r; } }) };
+      const wages = Sim.wageBill(car);
+      return { head: G.phead('squad', 'Squad', `${sq.length} players · wages ${G.money(wages)}/wk`, vb, 'compact'), tabs,
+        mount: fill => Nav.pager(fill, { key: 'sq' + H.sub.squad + H.view, items: list, cols: 1, itemH: 58, gap: 6, render: p => {
+          let opts = { xi: xi.has(p.id), sub: xi.has(p.id) ? '<span class="tag">XI</span>' : '' };
+          if (H.view === 'contract') { const y = Sim.yearsLeft(car, p); opts = { xi: opts.xi, sub: esc(Sim.statusOf(car, p)), right: `<b class="ask">£${p.wage}K</b><small class="${y <= 0 ? 'bad' : ''}">${y <= 0 ? 'Expires!' : 'to ' + (p.con || car.season + 1)}${p.listed ? ' · listed' : ''}</small>` }; }
+          if (H.view === 'stats') opts = { xi: opts.xi, sub: `${p.seasonApps} apps`, right: `<b class="ask">${p.seasonGoals}G ${p.ast || 0}A</b><small>avg ${p.rn ? (p.rs / p.rn).toFixed(2) : '—'}</small>` };
+          const r = G.prow(p, opts); r.onclick = () => Nav.push('player', { id: p.id }); return r; } }) };
     },
-
-    // ================= Tactics =================
-    tactics(car) {
-      const tac = car.tactics[car.me], chem = Sim.chemistry(car);
-      car.instr = car.instr || { press: 3, line: 3, pass: 3, toggles: {} };
-      const tabs = Nav.subtabs([{ id: 'formation', label: 'Formation', icon: 'tactics' }, { id: 'instructions', label: 'Instructions', icon: 'sliders' }, { id: 'setp', label: 'Set Pieces', icon: 'flag' }], H.sub.tactics, id => { H.sub.tactics = id; H.sel = null; Nav.refresh(); });
-      const head = G.phead('tactics', 'Tactics', 'Set up your team and how they play', `<span style="text-align:center"><small style="display:block;font-size:10.5px;color:#c9d3cb">Chemistry</small>${G.ring(chem, chem >= 70 ? '#5fcf6f' : chem >= 50 ? '#e7c25a' : '#ff6f61')}</span>`, 'compact');
-      return Object.assign({ head, tabs }, TAC[H.sub.tactics](car, tac));
-    },
-
-    // ================= Market =================
-    market(car) {
-      const filt = car.legendsOn ? H.sub.market : 'all';
-      const tabs = car.legendsOn ? Nav.subtabs([{ id: 'legends', label: 'Legends', icon: 'star' }, { id: 'all', label: 'Free Agents', icon: 'handshake' }], filt, id => { H.sub.market = id; Nav.refresh(); }) : null;
-      const items = Sim.freeAgents(car).filter(p => filt === 'all' || p.legend).sort((a, b) => b.rating - a.rating);
-      return { head: G.phead('market', 'Transfer Market', `${items.length} available · ${Sim.squadOf(car, car.me).length}/${DATA.season.squadMax} in squad`, null, 'compact'), tabs,
-        mount: fill => Nav.pager(fill, { key: 'mk' + filt, items, cols: 1, itemH: 58, gap: 6, empty: 'No free agents right now.', render: p => {
-          const chk = Sim.canSign(car, p), r = G.prow(p, { sub: `£${p.wage >= 1000 ? (p.wage / 1000).toFixed(1) + 'M' : p.wage + 'K'}/wk` }); if (!chk.ok) r.style.opacity = .6; r.onclick = () => Nav.push('player', { id: p.id }); return r; } }) };
-    },
-
+    tactics(car) { return TacticsUI.view(car); },
+    market(car) { return MarketUI.view(car); },
     // ================= Club =================
     club(car) {
       const tabs = Nav.subtabs([{ id: 'overview', label: 'Overview' }, { id: 'stadium', label: 'Stadium' }, { id: 'facilities', label: 'Facilities' }, { id: 'youth', label: 'Youth' }, { id: 'finances', label: 'Money' }], H.sub.club, id => { H.sub.club = id; Nav.refresh(); }, true);
@@ -132,86 +99,44 @@
     },
   };
 
-  // ---------- tactics tabs ----------
-  const LINES = { GK: 86, DF: 66, MF: 43, FW: 18 };
-  const TAC = {
-    formation(car, tac) {
-      const box = el('div', 'stack grow');
-      const fkeys = Object.keys(DATA.formations), pkeys = Object.keys(DATA.presets);
-      const row = el('div', ''); row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:7px';
-      const sel = (label, val, onStep) => { const s = el('div', 'selbox'), pv = el('button', '', '‹'), nx = el('button', '', '›'); pv.dataset.snd = nx.dataset.snd = 'swipe'; pv.onclick = () => onStep(-1); nx.onclick = () => onStep(1); s.append(pv, el('b', '', esc(val)), nx); s.title = label; return s; };
-      row.append(
-        sel('Formation', tac.formation, d => { tac.formation = fkeys[(fkeys.indexOf(tac.formation) + d + fkeys.length) % fkeys.length]; H.sel = null; G.save(); Nav.refresh(); }),
-        sel('Preset', car.preset ? DATA.presets[car.preset].label : 'Custom tactic', d => { const i = car.preset ? pkeys.indexOf(car.preset) : -1; Sim.applyPreset(car, pkeys[(i + d + pkeys.length) % pkeys.length]); G.save(); Nav.refresh(); }));
-      box.appendChild(row);
-      const pitch = el('div', 'pitch'); box.appendChild(pitch);
-      box.appendChild(mentality(car, tac));
-      return { el: box, mount: () => drawPitch(car, tac, pitch) };
-    },
-    instructions(car, tac) {
-      const box = el('div', 'stack grow'), ins = car.instr, panel = el('div', 'panel stack');
-      for (const k of ['press', 'line', 'pass']) {
-        const D = DATA.instructions[k], r = el('div', 'instrow', `<small>${esc(D.label)}</small><b>${esc(D.steps[ins[k] - 1])}</b>`), bars = el('div', 'bar5');
-        for (let i = 1; i <= 5; i++) { const b = el('i', i <= ins[k] ? 'on' : ''); b.onclick = () => { ins[k] = i; car.preset = null; Sound.play('tap'); G.save(); Nav.refresh(); }; bars.appendChild(b); }
-        r.appendChild(bars); panel.appendChild(r);
-      }
-      box.appendChild(panel);
-      const tg = el('div', 'toggles');
-      for (const k in DATA.toggles) { const T = DATA.toggles[k], on = !!(ins.toggles || {})[k], b = el('button', 'tgl' + (on ? ' on' : ''), `${I(T.icon)}<span>${esc(T.label)}</span>`);
-        b.onclick = () => { ins.toggles = ins.toggles || {}; ins.toggles[k] = !on; car.preset = null; G.save(); Nav.refresh(); }; tg.appendChild(b); }
-      box.appendChild(tg);
-      const skeys = Object.keys(DATA.styles), srow = el('div', 'cyc'), spv = el('button', 'cb', '‹'), snx = el('button', 'cb', '›'); srow.style.marginBottom = '0';
-      const sset = d => { tac.style = skeys[(skeys.indexOf(tac.style) + d + skeys.length) % skeys.length]; car.preset = null; G.save(); Nav.refresh(); }; spv.onclick = () => sset(-1); snx.onclick = () => sset(1); spv.dataset.snd = snx.dataset.snd = 'swipe';
-      srow.append(el('span', '', 'Playing style'), spv, el('b', '', esc(DATA.styles[tac.style].label) + (tac.style === car.brief.style ? ' <span class="gold">★</span>' : '')), snx); box.appendChild(srow);
-      box.appendChild(el('div', 'grow'));
-      box.appendChild(mentality(car, tac));
-      return { el: box };
-    },
-    setp(car) {
-      const box = el('div', 'stack grow'), xi = Sim.myXI(car).xi.filter(p => p.grp !== 'GK'), all = Sim.myXI(car).xi;
-      const roles = [['captain', 'Captain', 'star', all, null], ['pens', 'Penalties', 'ball', xi, 'shooting'], ['fk', 'Free kicks', 'flag', xi, 'passing'], ['corners', 'Corners', 'flag', xi, 'passing']];
-      for (const [key, label, icon, pool, attr] of roles) {
-        const list = attr ? pool.slice().sort((a, b) => b.attr[attr] - a.attr[attr]) : pool.slice().sort((a, b) => b.rating - a.rating);
-        const cur = key === 'captain' ? car.captain : car.setp[key]; let i = Math.max(0, list.findIndex(p => p.id === cur));
-        const p = list[i], row = el('div', 'cyc'), pv = el('button', 'cb', '‹'), nx = el('button', 'cb', '›');
-        const set = d => { i = (i + d + list.length) % list.length; const q = list[i]; if (key === 'captain') car.captain = q.id; else car.setp[key] = q.id; G.save(); Nav.refresh(); };
-        pv.onclick = () => set(-1); nx.onclick = () => set(1); pv.dataset.snd = nx.dataset.snd = 'swipe';
-        row.append(el('span', '', `${I(icon, 'gold')} `.replace('class="ic gold"', 'class="ic gold" style="display:inline;width:16px;height:16px;vertical-align:-3px;color:var(--gold)"') + esc(label)), pv, el('b', '', p ? esc(G.surname(p.name)) + (attr ? ` <small style="color:var(--gold);font-family:var(--sans)">${p.attr[attr]}</small>` : '') : '—'), nx);
-        box.appendChild(row);
-      }
-      box.appendChild(el('p', 'note center', 'Your best taker is listed first. The captain lifts morale when the team is behind.'));
-      return { el: box };
-    },
-  };
-  function mentality(car, tac) {
-    const m = el('div', 'panel ment', `${I('chart')}<span class="mt"><b>Mentality</b><small>${esc(DATA.mentality[tac.mentality].label)}</small></span>`), seg = el('div', 'seg');
-    for (const k of Object.keys(DATA.mentality)) { const b = el('button', k === tac.mentality ? 'on' : '', esc(DATA.mentality[k].label.replace(/ .*/, ''))); b.onclick = () => { tac.mentality = k; car.preset = null; G.save(); Nav.refresh(); }; seg.appendChild(b); }
-    m.appendChild(seg); return m;
+
+  // ---------- Office dashboard cards ----------
+  const DASH = ['fixtures', 'league', 'comps', 'finance', 'stats', 'inbox', 'medical', 'scout'];
+  function dashCard(car, kind, ih) {
+    const c = G.me(), d = el('button', 'panel dcard'), lines = Math.max(2, Math.floor((ih - 40) / 21));
+    const title = (icon, t, go) => { d.onclick = go; return `<div class="ptitle">${I(icon)}${t}</div>`; };
+    const li = (a, b, cls) => `<div class="dl ${cls || ''}"><span>${a}</span><b>${b}</b></div>`;
+    if (kind === 'fixtures') {
+      const div = Sim.myDiv(car), items = [];
+      car.results.filter(r => r.season === car.season && (r.h === car.me || r.a === car.me)).slice(-2).forEach(r => { const home = r.h === car.me, us = home ? r.gH : r.gA, th = home ? r.gA : r.gH; items.push(li(`${esc(G.club(home ? r.a : r.h).short.replace(/\d/g, ''))} ${home ? 'H' : 'A'}`, `<span class="score ${us > th ? 'W' : us < th ? 'L' : 'D'}">${us}-${th}</span>`)); });
+      for (let w = car.week; w < car.fixtures[div].length && items.length < lines; w++) { const f = car.fixtures[div][w].find(([h, a]) => h === car.me || a === car.me); if (f) items.push(li(`${esc(G.club(f[0] === car.me ? f[1] : f[0]).short.replace(/\d/g, ''))} ${f[0] === car.me ? 'H' : 'A'}`, `Wk ${w + 1}`)); }
+      d.innerHTML = title('calendar', 'Fixtures & Results', () => Nav.push('schedule')) + items.slice(0, lines).join('');
+    } else if (kind === 'league') {
+      const t = Sim.table(car, c.div), i = t.findIndex(r => r.id === car.me), s0 = Math.max(0, Math.min(t.length - lines, i - Math.floor(lines / 2)));
+      d.innerHTML = title('chart', esc(WORLD.divisions[c.div].name.replace('Premier League', 'League')), () => Nav.push('competitions')) + t.slice(s0, s0 + lines).map((r, k) => li(`${G.ord(s0 + k + 1)} ${esc(G.club(r.id).short.replace(/\d/g, ''))}`, r.pts, r.id === car.me ? 'me' : '')).join('');
+    } else if (kind === 'comps') {
+      const pos = car.week ? G.ord(Sim.position(car, car.me)) : '—', out = [li(esc(WORLD.divisions[c.div].name.replace('Premier ', 'Prem ')), pos)];
+      for (const cup of Object.values(car.cups || {})) { const st = cup.winner === car.me ? '<span class="good">Winners</span>' : cup.out[car.me] ? `<span class="bad">Out (${esc(shortRound(cup.out[car.me]))})</span>` : !cup.alive.includes(car.me) ? '—' : cup.winner ? '—' : `<span class="good">${esc(shortRound(Sim.cupRoundName(cup)))}</span>`; out.push(li(esc(cup.name), st)); }
+      d.innerHTML = title('trophy', 'Competitions', () => Nav.push('competitions')) + out.slice(0, lines).join('');
+    } else if (kind === 'finance') {
+      const left = car.budget.wage - Sim.wageBill(car);
+      d.innerHTML = title('cash', 'Finances', () => { H.tab = 'club'; H.sub.club = 'finances'; Nav.swap(); }) + [li('State', esc(Sim.finState(car))), li('Transfer budget', Sim.feeLabel(car.budget.transfer)), li('Wage left', `<span class="${left < 0 ? 'bad' : 'good'}">£${left}K</span>`), li('Balance', G.money(car.balances[car.me]))].slice(0, lines).join('');
+    } else if (kind === 'stats') {
+      const L = Sim.leaders(car), nm = p => p ? esc(G.surname(p.name)) : '—';
+      d.innerHTML = title('star', 'Player Stats', () => Nav.push('analyse')) + [li('⚽ ' + nm(L.goals), L.goals ? L.goals.seasonGoals : 0), li('🅰 ' + nm(L.assists), L.assists ? L.assists.ast || 0 : 0), li('★ ' + nm(L.rating), L.rating ? (L.rating.rs / L.rating.rn).toFixed(2) : '—'), li('🟨 ' + nm(L.cards), L.cards ? L.cards.yc || 0 : 0)].slice(0, lines).join('');
+    } else if (kind === 'inbox') {
+      const un = car.inbox.filter(m => !m.read).length;
+      d.innerHTML = title('mail', `Inbox${un ? ` <i class="badge">${un}</i>` : ''}`, () => Nav.push('inbox')) + car.inbox.slice(0, lines).map(m => `<div class="dl msg${m.read ? '' : ' unread'}"><span>${esc(m.from)}: ${esc(m.text)}</span></div>`).join('');
+    } else if (kind === 'medical') {
+      const inj = Sim.squadOf(car, car.me).filter(p => p.injured || p.ban);
+      d.innerHTML = title('medical', 'Medical Centre', () => Nav.push('medical')) + (inj.length ? inj.slice(0, lines).map(p => li(esc(G.surname(p.name)), p.ban ? '<span class="bad">Ban</span>' : `<span class="bad">${p.injured}w</span>`)).join('') : '<div class="dl"><span>Everyone is fit.</span></div>');
+    } else if (kind === 'scout') {
+      const nx = Sim.nextMatch(car), opp = nx && G.club(nx.home ? nx.a : nx.h), top = opp ? Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating).slice(0, lines - 1) : [];
+      d.innerHTML = title('binoculars', 'Scout Report', () => { H.tab = 'tactics'; TacticsUI.T.sub = 'opposition'; Nav.swap(); }) + (opp ? li(esc(opp.short.replace(/\d/g, '')), esc(car.tactics[opp.id].formation)) + top.map(p => li(esc(G.surname(p.name)) + ' ' + p.pos, p.rating)).join('') : '<div class="dl"><span>No match.</span></div>');
+    }
+    return d;
   }
-  function drawPitch(car, tac, pitch) {
-    const f = DATA.formations[tac.formation], { xi, bench } = Sim.myXI(car), c = G.me(), W = pitch.clientWidth;
-    pitch.innerHTML = `<svg class="lines" viewBox="0 0 68 100" preserveAspectRatio="none"><g fill="none" stroke="#f4f1e6" stroke-opacity=".5" stroke-width=".45"><rect x=".5" y=".5" width="67" height="99"/><line x1=".5" y1="50" x2="67.5" y2="50"/><ellipse cx="34" cy="50" rx="9" ry="6.5"/><rect x="14" y="83" width="40" height="16.5"/><rect x="24" y="93" width="20" height="6.5"/><rect x="14" y=".5" width="40" height="16.5"/><rect x="24" y=".5" width="20" height="6.5"/></g></svg>`;
-    const slots = ['GK'].concat(Array(f.DF).fill('DF'), Array(f.MF).fill('MF'), Array(f.FW).fill('FW')), count = { GK: 1, DF: f.DF, MF: f.MF, FW: f.FW }, idx = { GK: 0, DF: 0, MF: 0, FW: 0 };
-    const H2 = pitch.clientHeight, sw = Math.max(26, Math.min(40, H2 / 12));
-    xi.forEach((p, i) => {
-      const g = slots[i] || 'MF', n = count[g], k = idx[g]++, x = 6 + 88 * (k + .5) / n, y = LINES[g] + (n >= 5 && k % 2 ? -3 : 0);
-      const pw = Math.min(82, W / n - 4), d = el('button', 'pp' + (H.sel === p.id ? ' sel' : ''));
-      d.style.cssText = `left:${x}%;top:${y}%;--pw:${pw}px;--sw:${sw}px`;
-      d.innerHTML = `${car.captain === p.id ? '<span class="cap">C</span>' : ''}${Art.shirt(c.kit, i + 1, { gk: g === 'GK', pattern: Art.kitPattern(c.id) })}<div class="plate"><b>${esc(G.surname(p.name))}</b><span>${p.pos}<em>${p.rating}</em></span><div class="fit"><i style="width:${Math.round(p.fitness)}%;background:${p.fitness < 70 ? '#ffb43a' : '#5fcf6f'}"></i></div></div>`;
-      d.onclick = () => {
-        if (!H.sel) { H.sel = p.id; Sound.play('tap'); drawPitch(car, tac, pitch); return; }
-        if (H.sel === p.id) { benchCard(car, p, bench); return; }
-        Sim.swapIntoXI(car, H.sel, p.id); H.sel = null; Sound.play('card'); G.save(); Nav.refresh();
-      };
-      pitch.appendChild(d);
-    });
-    if (!pitch.querySelector('.hint')) { const h = el('div', 'hint', H.sel ? 'Tap a team-mate to swap, or tap again for the bench' : 'Tap a player to move or replace him'); h.style.cssText = 'position:absolute;left:0;right:0;bottom:3px;text-align:center;font:600 11px var(--sans);color:rgba(255,255,255,.75);pointer-events:none'; pitch.appendChild(h); }
-  }
-  function benchCard(car, out, bench) {
-    const body = el('div', ''); body.style.cssText = 'display:flex;flex-direction:column;gap:6px';
-    bench.slice(0, 6).forEach(p => { const r = G.prow(p); r.style.height = '54px'; r.onclick = () => { Sim.swapIntoXI(car, out.id, p.id); H.sel = null; G.save(); Nav.closeCard(); Sound.play('card'); Nav.refresh(); }; body.appendChild(r); });
-    Nav.card({ title: `Replace ${G.surname(out.name)}`, body, buttons: [{ label: 'Cancel', ghost: true, go: () => { H.sel = null; Nav.refresh(); } }] });
-  }
+  const shortRound = r => r.replace(' Round', ' Rd').replace('Quarter-Final', 'QF').replace('Semi-Final', 'SF');
 
   // ---------- club tabs ----------
   const facCard = (car, key) => { const F = DATA.facilities[key], l = car.facilities[key]; return `<div class="fac"><div class="fi" style="background-image:url(assets/art/${F.img}.webp)"></div><div class="ft"><b>${I(F.icon)}${esc(F.name.replace(' Facilities', '').replace(' Network', ''))}</b><small>Level ${l}</small><div class="lvl"><i style="width:${l * 10}%"></i></div></div></div>`; };
@@ -263,64 +188,63 @@
     finances(car) {
       const f = Sim.weekFinance(car, car.me, true), conf = Math.round(car.board.confidence);
       return { el: el('div', 'stack grow', `<div class="tiles t2 big"><div class="tile">${I('cash')}<span class="tv"><small>Club balance</small><b>${G.money(car.balances[car.me])}</b></span></div><div class="tile">${I('chart')}<span class="tv"><small>Net, home week</small><b class="${f.net >= 0 ? 'good' : 'bad'}">${G.money(f.net)}</b></span></div></div>
+        <div class="tiles t2"><div class="tile">${I('market')}<span class="tv"><small>Transfer budget</small><b>${Sim.feeLabel(car.budget.transfer)}</b></span></div><div class="tile">${I('clipboard')}<span class="tv"><small>Wage budget</small><b>£${car.budget.wage}K <span style="font-size:12px" class="${car.budget.wage - Sim.wageBill(car) < 0 ? 'bad' : 'good'}">(${car.budget.wage - Sim.wageBill(car)} left)</span></b></span></div></div>
         <div class="tiles t2"><div class="tile">${I('finances')}<span class="tv"><small>Wages / week</small><b class="bad">${G.money(f.wages)}</b></span></div><div class="tile">${I('ticket')}<span class="tv"><small>Matchday gate</small><b>${G.money(f.gate)}</b></span></div><div class="tile">${I('handshake')}<span class="tv"><small>Commercial / week</small><b>${G.money(f.commercial)}</b></span></div><div class="tile">${I('globe')}<span class="tv"><small>TV / week</small><b>${G.money(f.tv)}</b></span></div></div>
         <div class="panel"><div class="ptitle">${I('clipboard')}The board's brief</div><p style="font:700 18px var(--serif);margin:0 0 4px">${esc(car.brief.text)}</p><p class="note">Target ${G.ord(car.brief.target)} or better · ${esc(DATA.styles[car.brief.style].label)} football</p></div>
         <div class="panel stack"><div class="instrow"><small>Board confidence</small><b>${conf}%</b></div><div class="meter"><i style="width:${conf}%"></i></div><div class="instrow"><small>Fan mood</small><b>${Math.round(car.fans)}</b></div><div class="meter"><i style="width:${car.fans}%"></i></div></div>`) };
     },
   };
 
-  // ================= Player screen =================
-  Nav.define('player', prm => {
-    const car = S.career, p = car.players.find(x => x.id === prm.id), c = p.club ? G.club(p.club) : null, mine = p.club === car.me;
-    const attrs = DATA.attributes.filter(a => p.grp === 'GK' ? true : (a !== 'handling' && a !== 'reflexes'));
-    const b = el('div', 'pprof');
-    b.innerHTML = `<div class="pp-top"><span class="shirtbox">${G.shirtOf(p, null)}</span><div style="min-width:0"><h2>${esc(p.name)}</h2><div class="meta">${p.legend ? '<span class="legendtag">LEGEND</span>' : ''}${esc(DATA.positions[p.pos].name)}</div><div class="meta">${p.nat ? Flags.svg(p.nat, 20, 13) : ''} ${esc(Flags.name(p.nat))} · ${p.age} yrs</div><div class="meta">${c ? `<span class="crest" style="width:20px;height:23px">${Art.crest(c)}</span> ${esc(c.name)}` : 'Free agent'}${p.legend ? ' · ' + esc(p.known) : ''}</div></div><span class="rbadge ${G.rcls(p.rating)}" style="width:54px;height:54px;font-size:26px;margin-left:auto">${p.rating}</span></div>
-      <div class="tiles t3"><div class="tile"><span class="tv"><small>Potential</small><b>${p.pot}</b></span></div><div class="tile"><span class="tv"><small>Value</small><b>${G.money(Sim.value(p) * 1000)}</b></span></div><div class="tile"><span class="tv"><small>Wage</small><b>£${p.wage}K</b></span></div>
-      <div class="tile"><span class="tv"><small>Season</small><b>${p.seasonApps}a · ${p.seasonGoals}g</b></span></div><div class="tile"><span class="tv"><small>Fitness</small><b>${p.injured ? `<span class="bad">Inj ${p.injured}w</span>` : Math.round(p.fitness) + '%'}</b></span></div><div class="tile"><span class="tv"><small>Morale</small><b>${Math.round(p.morale)}</b></span></div></div>
-      <div class="panel attrs">${attrs.map(a => `<div class="attr"><span>${a[0].toUpperCase() + a.slice(1)}</span><b>${p.attr[a]}</b><div class="lvl"><i style="width:${p.attr[a]}%;${p.attr[a] >= 80 ? 'background:linear-gradient(90deg,#c0912d,#f6dc8a)' : ''}"></i></div></div>`).join('')}</div>`;
-    const spec = { header: G.titleHeader(G.surname(p.name), mine ? 'Your player' : c ? c.name : 'Free agent', 'user'), body: b };
-    if (mine) { spec.extra = [{ label: 'Release', hold: true, go: () => { if (Sim.release(car, p.id)) { G.save(); Nav.toast(`${p.name} released`); Nav.back(); } else Nav.toast(`You need at least ${DATA.season.squadMin} players`, 'bad'); } }];
-      spec.action = car.captain === p.id ? { label: 'Captain', icon: 'star', disabled: true } : { label: 'Make captain', icon: 'star', go: () => { car.captain = p.id; G.save(); Sound.play('stamp'); Nav.toast(`${G.surname(p.name)} is your new captain`); Nav.refresh(); } }; }
-    else if (!p.club) { const chk = Sim.canSign(car, p);
-      if (chk.ok) spec.action = { label: 'Sign', icon: 'handshake', hold: true, go: () => { if (Sim.sign(car, p.id)) { G.save(); Nav.back(); setTimeout(() => signReveal(p), 320); } } };
-      else { spec.action = { label: 'Sign', icon: 'lock', disabled: true }; b.insertAdjacentHTML('beforeend', `<p class="note center bad">${esc(chk.why)}</p>`); } }
-    return spec;
-  });
-  function signReveal(p) {
-    Sound.play('sting_signing'); setTimeout(() => Sound.play('camera'), 500); Sound.buzz(40); G.checkAchievements();
-    const b = el('div', 'center'); b.innerHTML = `<div style="width:120px;margin:0 auto 10px;--sw:120px;animation:crestIn .8s both">${G.shirtOf(p, null)}</div><h2 style="font-size:28px">${esc(p.name)}</h2><p class="note">joins ${esc(G.me().name)}!</p>`;
-    Nav.card({ body: b, buttons: [{ label: 'Brilliant', go: () => Nav.refresh() }] });
-  }
-
   // ================= Office sub screens =================
   Nav.define('schedule', () => {
     const car = S.career, div = Sim.myDiv(car), me = car.me, rows = [], box = el('div', 'fill');
     car.fixtures[div].forEach((round, w) => { const f = round.find(([h, a]) => h === me || a === me); if (f) rows.push({ w, f, r: car.results.find(m => m.season === car.season && m.week === w && m.h === f[0] && m.a === f[1]) }); });
-    return { header: G.header('calendar', 'Schedule', `${G.seasonLabel(car.season)} · ${rows.length} league games`), body: box,
+    for (const cup of Object.values(car.cups || {})) { cup.results.filter(r => r.h === me || r.a === me).forEach(r => rows.push({ w: DATA.cups[cup.id].weeks[r.round] - .5, f: [r.h, r.a], r, cup }));
+      if (cup.alive.includes(me) && !cup.winner) { const wk = DATA.cups[cup.id].weeks[cup.round]; if (wk != null) rows.push({ w: wk - .5, cup, pending: Sim.cupRoundName(cup) }); } }
+    rows.sort((a, b) => a.w - b.w);
+    return { header: G.header('calendar', 'Schedule', `${G.seasonLabel(car.season)} · league and cups`), body: box,
       mount: () => Nav.pager(box, { key: 'fx', items: rows, cols: 1, itemH: 52, gap: 5, render: x => {
+        if (x.pending) return el('div', 'fxrow cup', `<span class="wk">${String(Math.ceil(x.w)).padStart(2, '0')}</span><span class="crest">${I('trophy')}</span><span style="min-width:0"><b>${esc(x.cup.name)}</b><small>${esc(x.pending)} · draw on the day</small></span><span class="ha">CUP</span>`);
         const home = x.f[0] === me, opp = G.club(home ? x.f[1] : x.f[0]);
         let score = `<span class="ha">${home ? 'HOME' : 'AWAY'}</span>`;
-        if (x.r) { const us = home ? x.r.gH : x.r.gA, them = home ? x.r.gA : x.r.gH; score = `<span class="score ${us > them ? 'W' : us < them ? 'L' : 'D'}">${us}-${them}</span>`; }
-        return el('div', 'fxrow' + (x.w === car.week ? ' now' : ''), `<span class="wk">${String(x.w + 1).padStart(2, '0')}</span><span class="crest">${Art.crest(opp)}</span><span style="min-width:0"><b>${esc(opp.name)}</b><small>${home ? 'Home' : 'Away'}${opp.id === G.me().rival ? ' · Derby' : ''}</small></span>${score}`); } }) };
+        if (x.r) { const us = home ? x.r.gH : x.r.gA, them = home ? x.r.gA : x.r.gH, w = x.cup ? x.r.w === me : us > them; score = `<span class="score ${w ? 'W' : (x.cup ? 'L' : us < them ? 'L' : 'D')}">${us}-${them}${x.r.pens ? ' p' : ''}</span>`; }
+        return el('div', 'fxrow' + (!x.cup && x.w === car.week ? ' now' : '') + (x.cup ? ' cup' : ''), `<span class="wk">${String(Math.ceil(x.w + (x.cup ? .5 : 1))).padStart(2, '0')}</span><span class="crest">${Art.crest(opp)}</span><span style="min-width:0"><b>${esc(opp.name)}</b><small>${x.cup ? esc(x.cup.name) + ' · ' : ''}${home ? 'Home' : 'Away'}${opp.id === G.me().rival ? ' · Derby' : ''}</small></span>${score}`); } }) };
   });
+  const CT = { tab: 'league' };
   Nav.define('competitions', () => {
-    const car = S.career, divId = Sim.myDiv(car), d = WORLD.divisions[divId], t = Sim.table(car, divId), n = t.length;
-    const divs = WORLD.divisionsOf(d.country), above = divs.find(x => x.tier === d.tier - 1), below = divs.find(x => x.tier === d.tier + 1);
-    const zone = pos => d.tier === 1 ? (pos <= 4 ? 'up' : pos > n - d.down ? 'down' : '') : (above && pos <= d.up ? 'up' : above && d.playoff && pos >= d.playoff[0] && pos <= d.playoff[1] ? 'po' : below && pos > n - d.down ? 'down' : '');
-    const box = el('div', 'fill'), wrap = el('div', 'panel fill'); wrap.style.padding = '6px 4px';
-    wrap.appendChild(el('div', 'thead', '<span>#</span><span></span><span>Club</span><span>P</span><span>GD</span><span>Pts</span><span>Form</span>')); wrap.appendChild(box);
-    return { header: G.header('trophy', d.name, `${G.seasonLabel(car.season)} · ${n} clubs`), body: wrap,
-      mount: () => { const rowH = Math.floor((box.clientHeight - 40) / n);
+    const car = S.career, divId = Sim.myDiv(car), d = WORLD.divisions[divId];
+    const tabs = Nav.subtabs([{ id: 'league', label: 'League' }].concat(Object.values(car.cups || {}).map(c => ({ id: c.id, label: c.name }))), CT.tab, id => { CT.tab = id; Nav.refresh(); }, true);
+    const body = el('div', 'fill'); body.appendChild(tabs); const inner = el('div', 'fill'); body.appendChild(inner);
+    let mount;
+    if (CT.tab === 'league') {
+      const t = Sim.table(car, divId), n = t.length, divs = WORLD.divisionsOf(d.country), above = divs.find(x => x.tier === d.tier - 1), below = divs.find(x => x.tier === d.tier + 1);
+      const zone = pos => d.tier === 1 ? (pos <= 4 ? 'up' : pos > n - d.down ? 'down' : '') : (above && pos <= d.up ? 'up' : above && d.playoff && pos >= d.playoff[0] && pos <= d.playoff[1] ? 'po' : below && pos > n - d.down ? 'down' : '');
+      const wrap = el('div', 'panel fill'); wrap.style.padding = '6px 4px'; const box = el('div', 'fill');
+      wrap.appendChild(el('div', 'thead', '<span>#</span><span></span><span>Club</span><span>P</span><span>GD</span><span>Pts</span><span>Form</span>')); wrap.appendChild(box); inner.appendChild(wrap);
+      mount = () => { const rowH = Math.floor((box.clientHeight - 40) / n);
         Nav.pager(box, { key: 'tbl', items: t, cols: 1, itemH: rowH >= 22 ? Math.min(rowH, 34) : 26, gap: 0, render: (r, i) => { const pos = i + 1, c = G.club(r.id);
-          return el('div', 'trow ' + zone(pos) + (r.id === car.me ? ' me' : ''), `<span>${pos}</span><span class="crest">${Art.crest(c)}</span><span class="nm">${esc(G.shortName(c))}</span><span>${r.p}</span><span>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</span><b>${r.pts}</b><span class="fm">${r.form.slice(-3).map(x => `<i class="${x}"></i>`).join('')}</span>`); } }); } };
+          return el('div', 'trow ' + zone(pos) + (r.id === car.me ? ' me' : ''), `<span>${pos}</span><span class="crest">${Art.crest(c)}</span><span class="nm">${esc(G.shortName(c))}</span><span>${r.p}</span><span>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</span><b>${r.pts}</b><span class="fm">${r.form.slice(-3).map(x => `<i class="${x}"></i>`).join('')}</span>`); } }); };
+    } else {
+      const cup = car.cups[CT.tab], me = car.me, inCup = cup.alive.includes(me) || cup.out[me] || cup.winner === me;
+      const status = cup.winner ? `${esc(G.club(cup.winner).name)} won the ${esc(cup.name)}${cup.winner === me ? ' — that’s you!' : '.'}` : cup.out[me] ? `Knocked out in the ${esc(cup.out[me])}.` : !inCup ? `Your club is not in the ${esc(cup.name)} this season.` : `Into the ${esc(Sim.cupRoundName(cup))} · week ${DATA.cups[cup.id].weeks[cup.round] + 1}${cup.round === 0 && cup.byes.includes(me) ? ' (bye)' : ''}.`;
+      inner.appendChild(el('div', 'panel', `<div class="linkrow">${I('trophy')}<b>${esc(cup.name)}</b><span class="chip">${cup.alive.length} left</span></div><p class="note" style="margin:4px 0 0">${status}</p>`));
+      const list = el('div', 'fill'); list.style.marginTop = '8px'; inner.appendChild(list);
+      const last = cup.results.length ? Math.max(...cup.results.map(r => r.round)) : -1;
+      const items = cup.results.filter(r => r.round === last).sort((a, b) => ((b.h === me || b.a === me) - (a.h === me || a.a === me)));
+      mount = () => Nav.pager(list, { key: 'cup' + cup.id + last, items, cols: 1, itemH: 40, gap: 4, empty: 'No ties played yet.', render: r => {
+        const h = G.club(r.h), a = G.club(r.a);
+        return el('div', 'cuprow' + (r.h === me || r.a === me ? ' me' : ''), `<span class="${r.w === r.h ? 'w' : ''}">${esc(G.shortName(h))}</span><b>${r.gH}-${r.gA}${r.pens ? `<small> (${r.pens[0]}-${r.pens[1]} p)</small>` : ''}</b><span class="${r.w === r.a ? 'w' : ''}">${esc(G.shortName(a))}</span>`); } });
+      if (last >= 0) inner.insertBefore(el('p', 'note center', esc(DATA.cups.roundNames[DATA.cups.roundNames.length - (DATA.cups[cup.id].weeks.length - last)]) + ' results'), list);
+    }
+    return { header: G.header('trophy', 'Competitions', `${G.seasonLabel(car.season)}`), body, mount };
   });
   Nav.define('analyse', () => {
-    const car = S.career, t = Sim.table(car, Sim.myDiv(car)).find(r => r.id === car.me), sq = Sim.squadOf(car, car.me);
-    const scorers = sq.filter(p => p.seasonGoals).sort((a, b) => b.seasonGoals - a.seasonGoals).slice(0, 5), box = el('div', 'stack grow');
-    box.innerHTML = `<div class="tiles t3"><div class="tile"><span class="tv"><small>Played</small><b>${t.p}</b></span></div><div class="tile"><span class="tv"><small>W-D-L</small><b>${t.w}-${t.d}-${t.l}</b></span></div><div class="tile"><span class="tv"><small>Points</small><b>${t.pts}</b></span></div>
-      <div class="tile"><span class="tv"><small>Scored</small><b>${t.gf}</b></span></div><div class="tile"><span class="tv"><small>Conceded</small><b>${t.ga}</b></span></div><div class="tile"><span class="tv"><small>Per game</small><b>${t.p ? (t.pts / t.p).toFixed(2) : '—'}</b></span></div></div>
-      <div class="panel"><div class="ptitle">Form</div>${formHTML(myForm(car))}</div>
-      <div class="panel grow" style="overflow:hidden"><div class="ptitle">${I('ball')}Top scorers</div>${scorers.length ? scorers.map((p, i) => `<div class="instrow" style="padding:4px 0"><small>${i + 1}. ${esc(p.name)}</small><b>${p.seasonGoals}</b></div>`).join('') : '<p class="note">No goals yet this season.</p>'}</div>`;
+    const car = S.career, t = Sim.table(car, Sim.myDiv(car)).find(r => r.id === car.me), sq = Sim.squadOf(car, car.me), box = el('div', 'stack grow');
+    const top = (k, f) => sq.filter(p => f(p) > 0).sort((a, b) => f(b) - f(a)).slice(0, 4);
+    const block = (title, list, f, fmt) => `<div class="panel" style="overflow:hidden"><div class="ptitle" style="font-size:15px">${title}</div>${list.length ? list.map((p, i) => `<div class="dl"><span>${i + 1}. ${esc(p.name)}</span><b>${fmt ? fmt(f(p)) : f(p)}</b></div>`).join('') : '<p class="note">None yet.</p>'}</div>`;
+    box.innerHTML = `<div class="tiles t3"><div class="tile"><span class="tv"><small>W-D-L</small><b>${t.w}-${t.d}-${t.l}</b></span></div><div class="tile"><span class="tv"><small>Goals</small><b>${t.gf}:${t.ga}</b></span></div><div class="tile"><span class="tv"><small>Points/game</small><b>${t.p ? (t.pts / t.p).toFixed(2) : '—'}</b></span></div></div>
+      <div class="panel"><div class="ptitle" style="font-size:15px">Form</div>${formHTML(myForm(car))}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:0" class="grow">${block('⚽ Goals', top('g', p => p.seasonGoals), p => p.seasonGoals)}${block('🅰 Assists', top('a', p => p.ast || 0), p => p.ast || 0)}${block('★ Av. rating', sq.filter(p => p.rn >= 3).sort((a, b) => b.rs / b.rn - a.rs / a.rn).slice(0, 4), p => p.rs / p.rn, v => v.toFixed(2))}${block('🟨 Cards', top('y', p => p.yc || 0), p => p.yc || 0)}</div>`;
     return { header: G.header('chart', 'Analyse', 'Your season in numbers'), body: box };
   });
   Nav.define('medical', () => {

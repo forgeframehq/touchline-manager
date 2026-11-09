@@ -49,7 +49,7 @@ const DATA = {
     homeAdvantage: 1.1,
     strengthExponent: 2.2,     // ratings sit close together (70–90), so gaps must bite
     attackExponent: 1.2,
-    goalFromChance: 0.098,
+    goalFromChance: 0.088,
     finishExponent: 1.4,   // shooter vs keeper
     fatiguePerMinute: 0.32,
     injuryChancePerMatch: 0.03, injuryWeeks: [1, 6],
@@ -58,12 +58,12 @@ const DATA = {
 
   // money in £k
   finance: {
-    wageBase: 1.5, wageGrowth: 0.165,     // weekly wage ≈ wageBase × e^((rating−55)×wageGrowth)
+    wageBase: 2.5, wageGrowth: 0.135,     // weekly wage ≈ wageBase × e^((rating−55)×wageGrowth)
     valueBase: 0.05, valueGrowth: 0.19,   // transfer value (£m) ≈ valueBase × e^((rating−55)×valueGrowth) × age factor
     ticket: { 1: 45, 2: 28, 3: 22, 4: 20, 5: 15 },
     commercialTierMul: { 1: 1, 2: .25, 3: .08, 4: .04, 5: .02 },
     balanceMul: { 1: 15, 2: 3, 3: 1, 4: .7, 5: .4 },
-    legendWageMul: 1.6, freeAgentWageMul: 1.1,
+    legendWageMul: 1.3, freeAgentWageMul: 1.1,
   },
 
   gen: { squadShape: { GK: 3, DF: 8, MF: 7, FW: 5 }, squadSize: 23, ageRange: [18, 34], abroadShare: .15,

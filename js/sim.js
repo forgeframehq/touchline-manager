@@ -5,6 +5,7 @@
 'use strict';
 const Sim = (() => {
   const POS = DATA.positions, M = DATA.match, F = DATA.finance;
+  const HK = {};   // hooks filled by js/fm.js (tactics, contracts, transfers, cups, stats)
   const grpOf = pos => (POS[pos] || POS.CM).grp;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
@@ -23,7 +24,7 @@ const Sim = (() => {
       morale: 70, fitness: 100, injured: 0, goals: 0, apps: 0, seasonGoals: 0, seasonApps: 0 }, extra || {});
     p.attr = makeAttr(p); p.wage = wage(p); return p;
   }
-  function rebuild(career) { for (const p of career.players) if (!p.attr) p.attr = makeAttr(p); return career; }
+  function rebuild(career) { for (const p of career.players) if (!p.attr) p.attr = makeAttr(p); if (HK.rebuild) HK.rebuild(career); return career; }
   function genName(country, rng) {
     const home = NAMES[country] || NAMES.ENG, pool = rng.chance(DATA.gen.abroadShare) ? NAMES.ABROAD : home;
     return rng.pick(pool.first) + ' ' + rng.pick(pool.last);
@@ -57,7 +58,7 @@ const Sim = (() => {
   function pickXI(squad, formation) {
     const need = Object.assign({ GK: 1 }, DATA.formations[formation]); delete need.balance;
     const score = p => p.rating * (.6 + p.fitness / 250);
-    const avail = squad.filter(p => !p.injured).sort((a, b) => score(b) - score(a) || a.id - b.id);
+    const avail = squad.filter(p => !p.injured && !p.ban).sort((a, b) => score(b) - score(a) || a.id - b.id);
     const xi = [], used = new Set();
     for (const g in need) for (const p of avail) if (need[g] > 0 && p.grp === g && !used.has(p.id)) { xi.push(p); used.add(p.id); need[g]--; }
     for (const g in need) while (need[g] > 0) { const p = avail.find(q => !used.has(q.id) && (g === 'GK' || q.grp !== 'GK')); if (!p) break; xi.push(p); used.add(p.id); need[g]--; }
@@ -100,6 +101,7 @@ const Sim = (() => {
   }
   // tactical instructions → multipliers (only teams with instr set, i.e. the player's club)
   function instrMul(t, key) {
+    if (t.tm) { const T = t.tm; return key === 'create' ? (1 + T.c) * (1 + ((t.chem || 70) - 70) / 300) : key === 'concede' ? 1 + T.x : key === 'oppCreate' ? 1 + T.o : key === 'tire' ? 1 + T.t : 1; }
     const I = t.instr; if (!I) return 1; let v = 1; const tg = I.toggles || {};
     const press = I.press + (tg.highPress ? 1 : 0);
     if (key === 'oppCreate') v *= 1 - .045 * (press - 3);
@@ -125,16 +127,18 @@ const Sim = (() => {
       const me = m[side], opp = side === 'H' ? m.A : m.H, sOpp = side === 'H' ? m.sA : m.sH;
       if (!rng.chance(r[side] / m.total)) continue;
       const of = me.xi.filter(p => p.grp !== 'GK'), fw = of.filter(p => p.grp === 'FW'), mf = of.filter(p => p.grp === 'MF');
-      const shooter = rng.pick(fw.concat(fw, fw, mf, mf, of)); m.stats[shooter.id].sh++; m.shots[side]++;
+      let pool = fw.concat(fw, fw, mf, mf, of); if (opp.oppI) { const marked = pool.filter(p => (opp.oppI[p.id] || []).includes('tight')); if (marked.length && rng.chance(.5)) pool = pool.filter(p => !marked.includes(p)); }
+      const shooter = rng.pick(pool.length ? pool : of); m.stats[shooter.id].sh++; m.shots[side]++;
       const pGoal = M.goalFromChance * Math.pow(shooter.attr.shooting / Math.max(40, sOpp.gk), M.finishExponent);
       if (rng.chance(pGoal)) {
         if (side === 'H') m.gH++; else m.gA++;
         m.stats[shooter.id].g++; shooter.goals++; shooter.seasonGoals++;
         const assist = rng.chance(.7) ? rng.pick(of.filter(p => p !== shooter)) : null;
-        out.push({ min: m.min, type: 'goal', side, who: shooter.name, pid: shooter.id, assist: assist && assist.name, score: m.gH + '-' + m.gA });
+        out.push({ min: m.min, type: 'goal', side, who: shooter.name, pid: shooter.id, assist: assist && assist.name, aid: assist && assist.id, score: m.gH + '-' + m.gA });
       } else out.push({ min: m.min, type: rng.chance(.35) ? 'save' : 'chance', side, who: shooter.name, keeper: (opp.xi.find(p => p.grp === 'GK') || {}).name });
       void opp;
     }
+    if (HK.minute) HK.minute(m, out);
     for (const side of ['H', 'A']) for (const p of m[side].xi) p.fitness = Math.max(40, p.fitness - M.fatiguePerMinute * (1.2 - p.attr.stamina / 120) * modMul(m, side, 'tire') * instrMul(m[side], 'tire'));
     if (m.min === 45) out.push({ min: 45, type: 'ht' });
     for (const side of ['H', 'A']) if (m[side].ai) aiThink(m, side);
@@ -173,6 +177,7 @@ const Sim = (() => {
       const delta = res === 'D' ? M.moraleDraw : won ? M.moraleWin : M.moraleLoss;
       for (const p of t.squad || t.xi) p.morale = clamp(p.morale + delta * (m.played.has(p.id) ? 1 : .4), M.moraleClamp[0], M.moraleClamp[1]);
     }
+    if (HK.afterMatch) HK.afterMatch(m, ratings);
     let potm = null; for (const id in ratings) if (!potm || ratings[id] > ratings[potm]) potm = id;
     m.ratings = ratings; m.potm = potm ? +potm : null;
     return { gH: m.gH, gA: m.gA, events: m.events, total: m.total, ratings, potm: m.potm };
@@ -211,10 +216,11 @@ const Sim = (() => {
   function teamFor(career, clubId) {
     const club = career.clubs.find(c => c.id === clubId), squad = squadOf(career, clubId), tactics = career.tactics[clubId];
     const mine = clubId === career.me;
-    const { xi, bench } = mine ? myXI(career) : pickXI(squad, tactics.formation);
+    const { xi, bench } = mine ? (HK.myXI ? HK.myXI(career) : myXI(career)) : pickXI(squad, tactics.formation);
     const bonus = mine ? (career.boost ? DATA.coins.boost : 0) : (DATA.ai[career.difficulty] || DATA.ai.normal).ratingBonus;
     const t = { club, xi, bench, tactics, squad, bonus, ai: !mine };
     if (mine) { t.instr = career.instr; t.chem = chemistry(career); t.medical = career.facilities.medical; }
+    if (HK.team) HK.team(career, t, mine);
     return t;
   }
   function squadStrength(career, clubId) {
@@ -277,6 +283,7 @@ const Sim = (() => {
     for (const d of Object.values(WORLD.divisions)) career.fixtures[d.id] = fixtures(clubs.filter(c => c.div === d.id).map(c => c.id), seed ^ hash(d.id));
     if (career.legendsOn) addLegends(career, rng.fork('legends'));
     autoRoles(career);
+    if (HK.newCareer) HK.newCareer(career, rng.fork('fm'));
     career.brief = brief(career, myClubId);
     news(career, `${me.name} appoint ${career.manager.name} as manager. The board's brief: ${career.brief.text.toLowerCase()}.`, 'board');
     mail(career, 'board', 'The Chairman', `Welcome to ${me.name}. Our brief for this season: ${career.brief.text.toLowerCase()}. We also want to see ${DATA.styles[career.brief.style].label.toLowerCase()} football.`);
@@ -345,6 +352,7 @@ const Sim = (() => {
   }
   // Play every fixture this week except mine; return my match ready to play live (or null on a bye).
   function startWeek(career) {
+    if (HK.preWeek) HK.preWeek(career, false);
     const w = career.week; if (w >= seasonLength(career)) return null; let live = null;
     for (const divId in career.fixtures) {
       const round = career.fixtures[divId][w]; if (!round) continue;
@@ -371,10 +379,12 @@ const Sim = (() => {
       news(career, `The new stand is open! ${c.stadium} now holds ${c.capacity.toLocaleString()}.`, 'board'); mail(career, 'board', 'Stadium Manager', `Construction is complete. Capacity is now ${c.capacity.toLocaleString()}.`); career.build = null; }
     for (const p of career.players) { if (!p.club) continue; p.fitness = Math.min(100, p.fitness + 30); if (p.injured) p.injured--; }
     if (career.legendsOn) aiMarket(career, new RNG((career.seed ^ (career.season * 104729) ^ (career.week * 7919)) >>> 0));
+    if (HK.week) HK.week(career, mine);
     career.week++; career.pending = false;
     return mine;
   }
   function playWeek(career) {   // headless: my match plays itself
+    if (HK.preWeek) HK.preWeek(career, true);
     const live = startWeek(career); if (live) { live.H.ai = true; live.A.ai = true; }
     if (career.week >= seasonLength(career) && !live) return null;
     return finishWeek(career, live);
@@ -467,6 +477,7 @@ const Sim = (() => {
       p.attr = makeAttr(p); p.wage = wage(p);
       p.seasonGoals = 0; p.seasonApps = 0; p.injured = 0; p.fitness = 100; p.morale = 70;
     }
+    if (HK.contracts) HK.contracts(career, rng);
     const retired = career.players.filter(p => (p.age >= G.retireHardAge) || (p.age >= G.retireAge && p.rating < 72 + (p.age - G.retireAge) * 3));
     for (const p of retired) if (p.club === career.me) news(career, `${p.name} retires after a fine career.`);
     const gone = new Set(retired.map(p => p.id)); career.players = career.players.filter(p => !gone.has(p.id));
@@ -479,6 +490,7 @@ const Sim = (() => {
     career.season++; career.week = 0; career.results = []; career.stats.unbeaten = 0;
     for (const d of Object.values(WORLD.divisions)) career.fixtures[d.id] = fixtures(career.clubs.filter(c => c.div === d.id).map(c => c.id), career.seed ^ hash(d.id) ^ career.season);
     career.brief = brief(career, career.me); career.board.warned = false;
+    if (HK.newSeason) HK.newSeason(career, summary, rng);
     news(career, `New season ${career.season}/${String(career.season + 1).slice(2)}. Brief: ${career.brief.text.toLowerCase()}.`, 'board');
     mail(career, 'board', 'The Chairman', `A new season. Our brief: ${career.brief.text.toLowerCase()}.`);
     return summary;
@@ -597,6 +609,7 @@ const Sim = (() => {
   return { grpOf, wage, value, pickXI, strength, makeAttr, rebuild, createMatch, stepMatch, finishMatch, shout, setTactic, makeSub, playMatch, fixtures, table, position,
     teamFor, squadOf, squadStrength, difficulty, brief, previewBrief, weekFinance, newCareer, startWeek, finishWeek, playWeek, endSeason, myFixture, seasonLength,
     freeAgents, canSign, sign, release, jobOffers, takeJob, myDiv, hash, pressFor, applyPress, achievements, clubName,
-    facilityCost, upgradeFacility, expansionInfo, startExpansion, basePrice, attendance, stadiumRating, repTier, autoRoles, myXI, swapIntoXI, chemistry, applyPreset, boostMatch, mail };
+    facilityCost, upgradeFacility, expansionInfo, startExpansion, basePrice, attendance, stadiumRating, repTier, autoRoles, myXI, swapIntoXI, chemistry, applyPreset, boostMatch, mail,
+    HK, makePlayer, news, fillSquad, genName, weightedPick, clamp, settle, matchSeed, afterMyMatch, rates, strength };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

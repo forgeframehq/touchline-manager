@@ -48,13 +48,17 @@ const G = (() => {
 
   // ---------- player rows and profile ----------
   const rcls = r => r >= 80 ? '' : r >= 70 ? 'mid' : 'lo';
+  // opts: { xi, num, sub (html), right (html replacing the fitness column), unknown (hide exact rating) }
   function prow(p, opts) {
     opts = opts || {};
     const r = el('button', 'prow' + (opts.xi ? ' xi' : ''));
-    r.innerHTML = `${shirtOf(p, opts.num)}<span class="nm"><b>${esc(p.name)}</b><small>${p.legend ? '<span class="legendtag">LEGEND</span>' : ''}${esc(p.pos)} · ${p.age}${p.legend ? '' : ' yrs'}${p.nat && !p.legend ? ' · ' + Flags.svg(p.nat, 15, 10) : ''}${opts.sub ? ' · ' + opts.sub : ''}</small></span>
-      <span class="fitc">${p.injured ? `<small class="inj">INJ ${p.injured}w</small>` : `<div class="meter"><i style="width:${Math.round(p.fitness)}%"></i></div><small>Fitness</small>`}</span><span class="rbadge ${rcls(p.rating)}">${p.rating}</span>`;
+    const right = opts.right != null ? `<span class="fitc wide">${opts.right}</span>` : `<span class="fitc">${p.injured ? `<small class="inj">INJ ${p.injured}w</small>` : p.ban ? '<small class="inj">BAN</small>' : `<div class="meter"><i style="width:${Math.round(p.fitness)}%"></i></div><small>Fitness</small>`}</span>`;
+    const rb = opts.unknown ? `<span class="rbadge lo" style="font-size:14px">${Math.max(40, p.rating - 4 - p.id % 4)}–${p.rating + 3 + p.id % 3}</span>` : `<span class="rbadge ${rcls(p.rating)}">${p.rating}</span>`;
+    r.innerHTML = `${shirtOf(p, opts.num)}<span class="nm"><b>${esc(p.name)}</b><small>${p.legend ? '<span class="legendtag">LEGEND</span>' : ''}${esc(p.pos)} · ${p.age}${p.legend ? '' : ' yrs'}${p.nat && !p.legend && !opts.sub ? ' · ' + Flags.svg(p.nat, 15, 10) : ''}${opts.sub ? ' · ' + opts.sub : ''}</small></span>${right}${rb}`;
     return r;
   }
+  // 1–20 attribute colour band
+  const acol = v => v >= 16 ? 'a-hi' : v >= 13 ? 'a-good' : v >= 9 ? 'a-mid' : v >= 6 ? 'a-low' : 'a-poor';
   function stars(v) { let s = ''; for (let i = 1; i <= 5; i++) s += v >= i ? '★' : v >= i - .5 ? '⯪' : '<span class="off">★</span>'; return `<span class="stars">${s}</span>`; }
   function pips(n, max) { return `<div class="bar5">${Array.from({ length: max || 5 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>`; }
   function ring(v, col) { const r = 24, c = 2 * Math.PI * r; return `<span class="cring"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="${r}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="5"/><circle cx="29" cy="29" r="${r}" fill="none" stroke="${col || '#5fcf6f'}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${c * v / 100} ${c}"/></svg><b>${v}</b></span>`; }
@@ -63,5 +67,5 @@ const G = (() => {
   function playerCard(p, actions) { Nav.push('player', { id: p.id, actions }); }
   const sticker = (p, opts) => prow(p, opts);
 
-  return { state, money, ord, surname, seasonLabel, club, me, theme, save, setPrefs, checkAchievements, crestEl, shirtOf, shortName, topbar, phead, header, titleHeader, prow, rcls, stars, pips, ring, playerCard, sticker };
+  return { state, money, ord, surname, seasonLabel, club, me, theme, save, setPrefs, checkAchievements, crestEl, shirtOf, shortName, topbar, phead, header, titleHeader, prow, acol, rcls, stars, pips, ring, playerCard, sticker };
 })();

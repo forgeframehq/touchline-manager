@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const require = createRequire(import.meta.url);
 // load the browser scripts into one shared context, in index.html order
 const ctx = vm.createContext({ console, Math, Date });
-const order = ['js/data.js', 'js/rng.js', 'js/world.js', 'js/names.js', 'js/packs/eng_clubs.js', 'js/packs/eng_players.js', 'js/packs/legends.js', 'js/sim.js'];
+const order = ['js/data.js', 'js/data_fm.js', 'js/rng.js', 'js/world.js', 'js/names.js', 'js/packs/eng_clubs.js', 'js/packs/eng_players.js', 'js/packs/legends.js', 'js/sim.js', 'js/fm.js'];
 for (const f of order) vm.runInContext(readFileSync(new URL('../' + f, import.meta.url), 'utf8').replace(/^const (\w+) =/m, 'var $1 =').replace(/^function RNG/m, 'var RNG = function RNG'), ctx, { filename: f });
 const { Sim, WORLD, DATA } = ctx;
 const N = +process.argv[2] || 3, legends = process.argv[3] === 'legends';

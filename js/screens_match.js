@@ -8,13 +8,13 @@
 
   // ================= Pre-match: walk-out + line-ups + scout report =================
   Nav.define('prematch', () => {
-    const car = S.career, fx = Sim.myFixture(car), H = G.club(fx.h), A = G.club(fx.a), opp = fx.home ? A : H, me = G.me();
+    const car = S.career, fx = Sim.nextMatch(car), H = G.club(fx.h), A = G.club(fx.a), opp = fx.home ? A : H, me = G.me();
     const tH = Sim.teamFor(car, fx.h), tA = Sim.teamFor(car, fx.a), dd = Sim.difficulty(car, opp.id);
     const danger = Sim.squadOf(car, opp.id).filter(p => !p.injured).sort((a, b) => b.rating - a.rating)[0];
     Sound.crowd(.7);
     const b = el('div', 'walk');
     const col = (t, c) => `<div class="lu"><div class="lu-h">${esc(short(c))}<small>${esc(car.tactics[c.id].formation)}</small></div>${t.xi.map((p, i) => `<div class="lu-r"><span class="no">${i + 1}</span><span class="nm">${esc(G.surname(p.name))}</span><span class="ps">${p.pos}</span></div>`).join('')}</div>`;
-    b.innerHTML = `<div class="panel hero vsbig"><div class="vc"><span class="crest">${Art.crest(H)}</span><b>${esc(G.shortName(H))}</b></div><div class="vm"><b>VS</b><small>${esc(WORLD.divisions[H.div].name)}<br>Week ${car.week + 1}</small></div><div class="vc"><span class="crest">${Art.crest(A)}</span><b>${esc(G.shortName(A))}</b></div></div>
+    b.innerHTML = `<div class="panel hero vsbig"><div class="vc"><span class="crest">${Art.crest(H)}</span><b>${esc(G.shortName(H))}</b></div><div class="vm"><b>VS</b><small>${esc(fx.comp)}<br>${fx.kind === 'cup' ? esc(fx.round) : 'Week ' + (car.week + 1)}</small></div><div class="vc"><span class="crest">${Art.crest(A)}</span><b>${esc(G.shortName(A))}</b></div></div>
       <div class="note center">${esc(H.stadium)} · ${H.capacity.toLocaleString()}${opp.id === me.rival ? ' · <b class="gold">DERBY DAY</b>' : ''}</div>
       <div class="lineups">${col(tH, H)}${col(tA, A)}</div>
       <div class="scout"><div><small>Danger man</small><b>${danger ? esc(danger.name) + ' ' + danger.rating : '—'}</b></div><div><small>Difficulty</small><b class="diff">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= dd ? 'on' : ''}"></i>`).join('')}</b></div><button class="boostbtn" ${car.boost || car.coins < DATA.coins.boostCost ? 'disabled' : ''}><small>Training boost</small><b class="${car.boost ? 'good' : 'gold'}">${car.boost ? 'Active +' + DATA.coins.boost : Icons.svg('coin').replace('class="ic ', 'style="width:15px;height:15px;display:inline;vertical-align:-2px" class="ic ') + ' ' + DATA.coins.boostCost}</b></button></div>`;
@@ -22,9 +22,14 @@
     if (!fx.home) { const tr = el('div', 'travel', `<div>${Art.ball()}</div><b>Travelling to ${esc(H.stadium)}…</b><small>${esc(H.name)}</small>`); b.appendChild(tr); setTimeout(() => tr.classList.add('gone'), 1100); }
     return { header: G.titleHeader('Match Day', `${me.name} ${fx.home ? 'at home' : 'away'}`, 'whistle'), body: b, bg: 'bg_tunnel',
       extra: [{ label: 'Tactics', go: () => tacticsCard(null) }],
-      action: { label: 'Kick Off', go: () => { const press = Sim.pressFor(car, fx); if (press && car.pressWeek !== car.season * 100 + car.week) Nav.push('press', { press }); else kickOff(); } } };
+      action: { label: 'Kick Off', go: () => { const press = fx.kind === 'league' && Sim.pressFor(car, fx); if (press && car.pressWeek !== car.season * 100 + car.week) Nav.push('press', { press }); else kickOff(); } } };
   });
-  function kickOff() { S.live = Sim.startWeek(S.career); S.live.mine = S.live.h === S.career.me ? 'H' : 'A'; Nav.replace('match'); }
+  function kickOff() {
+    const car = S.career, nx = Sim.nextMatch(car);
+    S.live = nx && nx.kind === 'cup' ? Sim.startCup(car) : Sim.startWeek(car);
+    if (!S.live) { Nav.toast('No match to play', 'bad'); Nav.backTo('hub'); return; }
+    S.live.mine = S.live.h === car.me ? 'H' : 'A'; Nav.replace('match');
+  }
 
   // ================= Press conference =================
   Nav.define('press', p => {
@@ -42,15 +47,18 @@
 
   // ================= Tactics card (pre-match or live) =================
   function tacticsCard(live) {
-    const car = S.career, tac = live ? live[live.mine].tactics : car.tactics[car.me], box = el('div', 'settings');
-    const cyc = (label, key, opts) => { const row = el('div', 'cyc'), keys = Object.keys(opts); let i = keys.indexOf(tac[key]);
-      const val = el('b', '', esc(opts[keys[i]].label || keys[i]) + (key === 'style' && keys[i] === car.brief.style ? ' ★' : '')), pv = el('button', 'cb', '‹'), nx = el('button', 'cb', '›');
-      const set = d => { i = (i + d + keys.length) % keys.length; if (live) Sim.setTactic(live, live.mine, key, keys[i]); else tac[key] = keys[i];
-        if (!live || key !== 'formation') { if (!live) G.save(); } val.textContent = (opts[keys[i]].label || keys[i]) + (key === 'style' && keys[i] === car.brief.style ? ' ★' : ''); Sound.play('move'); };
-      pv.onclick = () => set(-1); nx.onclick = () => set(1); row.append(el('span', '', label), pv, val, nx); return row; };
-    if (!live) box.appendChild(cyc('Formation', 'formation', DATA.formations));
-    box.append(cyc('Mentality', 'mentality', DATA.mentality), cyc('Style', 'style', DATA.styles));
-    if (live) box.appendChild(el('p', 'note center', 'Formation changes happen through substitutions.'));
+    const car = S.career, box = el('div', 'stack'), m7 = DATA.mentality7;
+    const draw = () => {
+      const t = Sim.tac(car), cur = live ? live[live.mine].tactics.mentality : t.mentality;
+      box.innerHTML = '';
+      const row = (label, val, step) => { const r = el('div', 'cyc m0'), pv = el('button', 'cb', '‹'), nx = el('button', 'cb', '›'); pv.dataset.snd = nx.dataset.snd = 'swipe'; pv.onclick = () => step(-1); nx.onclick = () => step(1); r.append(el('span', '', label), pv, el('b', '', val), nx); box.appendChild(r); };
+      row('Tactic', esc(t.name + ' · ' + t.shape), d => { car.tac.slot = (car.tac.slot + d + 3) % 3; Sim.syncTactics(car); if (live) { const T2 = Sim.tac(car); live[live.mine].tm = Sim.tmods(car); Sim.setTactic(live, live.mine, 'mentality', T2.mentality); } G.save(); draw(); });
+      row('Mentality', esc(DATA.mentality[cur].label), d => { const k = m7[Math.max(0, Math.min(6, m7.indexOf(cur) + d))]; if (live) Sim.setTactic(live, live.mine, 'mentality', k); else { t.mentality = k; Sim.syncTactics(car); G.save(); } draw(); });
+      for (const [g, key] of [['ip', 'tempo'], ['op', 'press'], ['op', 'line']]) { const def = DATA.instr[g === 'ip' ? 'inPossession' : 'outPossession'][key];
+        row(def.label, esc(def.opts[t[g][key]][0]), d => { t[g][key] = Math.max(0, Math.min(def.opts.length - 1, t[g][key] + d)); if (live) { live[live.mine].tm = Sim.tmods(car); live.dirty = true; } G.save(); draw(); }); }
+      if (live) box.appendChild(el('p', 'note center', 'Roles, positions and every instruction live in the Tactics tab.'));
+    };
+    draw();
     Nav.card({ title: 'Tactics', body: box, buttons: [{ label: 'Done', go: () => { if (!live) Nav.refresh(); } }] });
   }
 
@@ -97,6 +105,8 @@
       } else if (e.type === 'sub' && !e.quiet) feedLine(e.min, `Sub ${esc(short(side))}: ${esc(G.surname(e.on))} on, ${esc(G.surname(e.off))} off`, 'sub');
       else if (e.type === 'sub') feedLine(e.min, `${esc(short(side))} sub: ${esc(G.surname(e.on))} for ${esc(G.surname(e.off))}`, 'sub');
       else if (e.type === 'shout' && ours) feedLine(e.min, `You: “${esc(DATA.shouts[e.key].label)}”`, 'shout');
+      else if (e.type === 'yellow') { feedLine(e.min, `🟨 ${esc(G.surname(e.who))} (${esc(short(side))}) is booked`, 'card'); Sound.play('whistle1', { vol: .6 }); }
+      else if (e.type === 'red') { feedLine(e.min, `🟥 <b>RED CARD</b> ${esc(G.surname(e.who))} (${esc(short(side))}) is sent off!`, 'red'); Sound.play('whistle1'); Sound.play(ours ? 'boo' : 'applause', { vol: .6 }); }
       else if (e.type === 'ht') { feedLine(45, 'Half-time.'); Sound.play('whistle2'); }
       else if (e.type === 'ft') { feedLine(e.min, 'Full-time.'); Sound.play('whistle3'); }
     };
@@ -110,7 +120,7 @@
     };
     const start = () => { clearInterval(timer); timer = setInterval(tick, 280 / speed); };
     const stop = () => { clearInterval(timer); timer = null; };
-    const fullTime = () => { cancelAnimationFrame(raf); const before = car.board.confidence, posBefore = car.week ? Sim.position(car, car.me) : 0; const m = Sim.finishWeek(car, live); S.live = null; G.save(); Nav.replace('fulltime', { m, before, posBefore }); };
+    const fullTime = () => { cancelAnimationFrame(raf); const before = car.board.confidence, posBefore = car.week ? Sim.position(car, car.me) : 0; const m = live.cup ? Sim.finishCup(car, live) : Sim.finishWeek(car, live); S.live = null; G.save(); Nav.replace('fulltime', { m, before, posBefore }); };
     const pause = () => {
       if (live.done) return; paused = true; Sound.play('whistle1');
       const list = el('div', 'menu-list');
@@ -164,17 +174,18 @@
   // ================= Full time =================
   Nav.define('fulltime', p => {
     const car = S.career, m = p.m, H = G.club(m.h), A = G.club(m.a), mine = m.h === car.me ? 'H' : 'A';
-    const us = mine === 'H' ? m.gH : m.gA, them = mine === 'H' ? m.gA : m.gH, res = us > them ? 'win' : us < them ? 'loss' : 'draw';
+    const us = mine === 'H' ? m.gH : m.gA, them = mine === 'H' ? m.gA : m.gH, res = m.cup ? (m.winner === car.me ? 'win' : 'loss') : us > them ? 'win' : us < them ? 'loss' : 'draw';
     const potm = car.players.find(x => x.id === m.potm), pos = Sim.position(car, car.me), delta = Math.round((car.board.confidence - p.before) * 10) / 10;
     const goals = side => m.events.filter(e => e.type === 'goal' && e.side === side).map(e => `${esc(G.surname(e.who))} ${e.min}'`).join('<br>') || '&nbsp;';
     const coins = res === 'win' ? DATA.coins.win : res === 'draw' ? DATA.coins.draw : 0;
+    const cards = side => m.events.filter(e => (e.type === 'red') && e.side === side).map(e => `🟥 ${esc(G.surname(e.who))} ${e.min}'`).join('<br>');
     const b = el('div', 'ftv');
     b.innerHTML = `<div class="ft-banner">Full Time</div>
       <div class="panel hero"><div class="ft-score"><div><span class="crest">${Art.crest(H)}</span><b>${esc(short(H))}</b></div><div class="sb-led"><b>${m.gH}-${m.gA}</b></div><div><span class="crest">${Art.crest(A)}</span><b>${esc(short(A))}</b></div></div>
-      <div class="ft-goals" style="margin-top:6px"><div>${goals('H')}</div><div>${goals('A')}</div></div></div>
+      <div class="ft-goals" style="margin-top:6px"><div>${goals('H')}${cards('H') ? '<br>' + cards('H') : ''}</div><div>${goals('A')}${cards('A') ? '<br>' + cards('A') : ''}</div></div>${m.pens ? `<p class="center gold" style="margin:6px 0 0;font:700 15px var(--serif)">${esc(G.club(m.winner).short.replace(/\d/g, ''))} win ${Math.max(...m.pens)}-${Math.min(...m.pens)} on penalties</p>` : ''}</div>
       <div class="panel potm"><span class="shirtbox">${potm ? G.shirtOf(potm, null) : ''}</span><div style="min-width:0"><small>Player of the match</small><b>${potm ? esc(potm.name) : '—'}</b><span class="rating">${potm ? m.ratings[potm.id].toFixed(1) : ''}</span></div></div>
-      <div class="tiles t4keep"><div class="tile"><span class="tv"><small>Position</small><b>${G.ord(pos)}${p.posBefore ? (pos < p.posBefore ? ' <span class="good">▲</span>' : pos > p.posBefore ? ' <span class="bad">▼</span>' : '') : ''}</b></span></div><div class="tile"><span class="tv"><small>Board</small><b class="${delta >= 0 ? 'good' : 'bad'}">${delta >= 0 ? '+' : ''}${delta}</b></span></div><div class="tile"><span class="tv"><small>Fans</small><b>${Math.round(car.fans)}</b></span></div><div class="tile">${Icons.svg('coin')}<span class="tv"><small>Coins</small><b>+${coins}</b></span></div></div>`;
-    return { header: G.titleHeader(res === 'win' ? 'Victory!' : res === 'loss' ? 'Defeat' : 'Draw', `${WORLD.divisions[H.div].name} · Week ${car.week}`, 'whistle'), body: b, bg: res === 'win' ? 'bg_dressing' : 'bg_tunnel', back: false,
+      <div class="tiles t4keep"><div class="tile"><span class="tv"><small>${m.cup ? 'Cup' : 'Position'}</small><b>${m.cup ? (m.winner === car.me ? (car.cups[m.cup].winner === car.me ? 'Winners!' : 'Through') : 'Out') : G.ord(pos)}${!m.cup && p.posBefore ? (pos < p.posBefore ? ' <span class="good">▲</span>' : pos > p.posBefore ? ' <span class="bad">▼</span>' : '') : ''}</b></span></div><div class="tile"><span class="tv"><small>Board</small><b class="${delta >= 0 ? 'good' : 'bad'}">${delta >= 0 ? '+' : ''}${delta}</b></span></div><div class="tile"><span class="tv"><small>Fans</small><b>${Math.round(car.fans)}</b></span></div><div class="tile">${Icons.svg('coin')}<span class="tv"><small>Coins</small><b>+${coins}</b></span></div></div>`;
+    return { header: G.titleHeader(res === 'win' ? 'Victory!' : res === 'loss' ? 'Defeat' : 'Draw', m.comp || `${WORLD.divisions[H.div].name} · Week ${car.week}`, 'whistle'), body: b, bg: res === 'win' ? 'bg_dressing' : 'bg_tunnel', back: false,
       action: { label: 'Continue', go: () => { Sound.crowd(.25); Nav.backTo('hub'); } },
       mount: () => { Sound.crowd(res === 'win' ? .9 : .3); if (res === 'win') { Sound.swell(2, 2); Sound.play('applause'); } else if (res === 'loss') Sound.play('boo', { vol: .5 }); if (coins) setTimeout(() => Sound.play('coin'), 600); G.checkAchievements({ match: m }); } };
   });
