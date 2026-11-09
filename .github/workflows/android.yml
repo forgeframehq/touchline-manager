@@ -27,6 +27,9 @@ jobs:
         with: { distribution: temurin, java-version: 21 }
       - run: npm ci || npm install
       - run: npm run android
+      - name: Fetch Gradle (retries if the download server is flaky)
+        working-directory: android
+        run: for i in 1 2 3 4 5; do ./gradlew --version --no-daemon && break; echo "retry $i"; sleep 45; done
       - name: Debug APK
         working-directory: android
         run: set -o pipefail; ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee $RUNNER_TEMP/build.log
