@@ -2,11 +2,11 @@
 // Clubs, squads and legends live in js/packs/ (via js/world.js).
 'use strict';
 const DATA = {
-  version: 2,
-  saveKey: 'tlm.career.v2',
+  version: 3,
+  saveKey: 'tlm.career.v3', slotsKey: 'tlm.slots.v3', slotCount: 3,
   prefsKey: 'tlm.prefs.v1',
 
-  season: { pointsWin: 3, pointsDraw: 1, squadMin: 22, squadMax: 32, subsOnBench: 7, matchMinutes: 90, addedTime: [1, 6], startYear: 2026 },
+  season: { pointsWin: 3, pointsDraw: 1, squadMin: 22, squadMax: 32, subsOnBench: 7, subsAllowed: 5, matchMinutes: 90, addedTime: [1, 6], startYear: 2026 },
 
   // detailed position → engine group, plus which attributes matter (for generating attributes from a rating)
   positions: {
@@ -49,7 +49,7 @@ const DATA = {
     homeAdvantage: 1.1,
     strengthExponent: 2.2,     // ratings sit close together (70–90), so gaps must bite
     attackExponent: 1.2,
-    goalFromChance: 0.115,
+    goalFromChance: 0.098,
     finishExponent: 1.4,   // shooter vs keeper
     fatiguePerMinute: 0.32,
     injuryChancePerMatch: 0.03, injuryWeeks: [1, 6],
@@ -94,16 +94,86 @@ const DATA = {
     styles: ['possession', 'direct', 'counter'],
   },
 
+  fans: { start: 60, win: 3, draw: 0, loss: -3, legendSigned: 6 },
+
+  // touchline shouts: effect lasts `mins`, can't repeat for `cooldown` minutes
+  shouts: {
+    push:      { label: 'Push up!',       sub: 'More chances, more risk',     mins: 12, cooldown: 15, effect: { create: 1.3, concede: 1.25 } },
+    calm:      { label: 'Calm it down',   sub: 'Slow it, keep the ball',      mins: 12, cooldown: 15, effect: { create: .8, concede: .7 } },
+    stuck:     { label: 'Get stuck in!',  sub: 'Win it back, tires legs',     mins: 10, cooldown: 15, effect: { oppCreate: .8, tire: 1.6 } },
+    encourage: { label: 'Encourage',      sub: 'Lift heads after a setback',  mins: 1,  cooldown: 25, effect: {}, morale: 8 },
+  },
+
+  // press conferences: tag picks when they happen (derby, big game, slump, routine every 4 weeks)
+  press: [
+    { tag: 'derby', q: 'It\'s derby week against {opp}. What does this one mean to you?', answers: [
+      { text: 'Everything. The fans deserve a win and we\'ll give them one.', fans: 6, morale: 3, board: 0 },
+      { text: 'Three points like any other. We stay calm.', fans: -2, morale: 2, board: 2 },
+      { text: 'They should be worried about us, not the other way round.', fans: 8, morale: 5, board: -2 } ] },
+    { tag: 'derby', q: '{opp} say they own this city. Your response?', answers: [
+      { text: 'Talk is cheap. We\'ll answer on the pitch.', fans: 4, morale: 4, board: 1 },
+      { text: 'They can say what they like. I respect them.', fans: -3, morale: 0, board: 2 },
+      { text: 'Check the history books. This city is ours.', fans: 9, morale: 3, board: -3 } ] },
+    { tag: 'big', q: '{opp} are favourites. Can {club} really get something?', answers: [
+      { text: 'Absolutely. We fear nobody.', fans: 4, morale: 5, board: -1 },
+      { text: 'It\'s a tough test. A point would be a good result.', fans: -1, morale: -1, board: 2 },
+      { text: 'All the pressure is on them. We\'ll enjoy it.', fans: 2, morale: 3, board: 1 } ] },
+    { tag: 'big', q: 'How do you stop a side like {opp}?', answers: [
+      { text: 'Work harder than them for ninety minutes.', fans: 2, morale: 4, board: 1 },
+      { text: 'I\'m not giving my plan away in here.', fans: 0, morale: 1, board: 1 },
+      { text: 'We don\'t stop them. We make them stop us.', fans: 5, morale: 4, board: -2 } ] },
+    { tag: 'slump', q: 'Three defeats in a row. Is your job under threat?', answers: [
+      { text: 'I take full responsibility. We\'ll turn it around.', fans: 2, morale: 3, board: 3 },
+      { text: 'The players know they\'ve let people down.', fans: 0, morale: -6, board: 2 },
+      { text: 'Bad luck, nothing more. The performances were fine.', fans: -4, morale: 2, board: -3 } ] },
+    { tag: 'slump', q: 'Fans were booing at the final whistle. Do they have a point?', answers: [
+      { text: 'They pay their money. They\'re entitled to show it.', fans: 4, morale: 0, board: 1 },
+      { text: 'We need them behind us, not against us.', fans: -3, morale: 2, board: 0 },
+      { text: 'Give us a few weeks. They\'ll be singing again.', fans: 2, morale: 2, board: 1 } ] },
+    { tag: 'general', q: 'How would you sum up the mood in the dressing room?', answers: [
+      { text: 'Hungry. Everyone wants more.', fans: 2, morale: 3, board: 1 },
+      { text: 'Focused. We take it one game at a time.', fans: 0, morale: 2, board: 2 },
+      { text: 'Some players need to step up, and they know it.', fans: 1, morale: -4, board: 2 } ] },
+    { tag: 'general', q: 'Are you happy with the squad you have?', answers: [
+      { text: 'Very. I wouldn\'t swap any of them.', fans: 1, morale: 5, board: 0 },
+      { text: 'We\'re always looking to improve.', fans: 2, morale: -2, board: 2 },
+      { text: 'Ask me again when the board give me money.', fans: 3, morale: 0, board: -4 } ] },
+    { tag: 'general', q: 'What are your targets for the rest of the season?', answers: [
+      { text: 'Meet the board\'s brief, then see how far we can go.', fans: 0, morale: 1, board: 3 },
+      { text: 'Silverware. Nothing less.', fans: 5, morale: 3, board: -1 },
+      { text: 'Play football the fans are proud of.', fans: 4, morale: 2, board: 0 } ] },
+  ],
+
+  // achievements: global across careers, unlocked with a popup
+  achievements: [
+    { id: 'first_win', title: 'Off the Mark', desc: 'Win your first match' },
+    { id: 'derby_win', title: 'Local Hero', desc: 'Win a derby' },
+    { id: 'thrash', title: 'Demolition', desc: 'Win by five goals or more' },
+    { id: 'comeback', title: 'Never Say Die', desc: 'Win after going two goals down' },
+    { id: 'unbeaten10', title: 'Invincible Run', desc: 'Go ten league games unbeaten' },
+    { id: 'legend1', title: 'Living Legend', desc: 'Sign a legend' },
+    { id: 'legend5', title: 'Galácticos', desc: 'Sign five legends in one career' },
+    { id: 'champions', title: 'Champions!', desc: 'Win a league title' },
+    { id: 'promoted', title: 'Going Up', desc: 'Win promotion' },
+    { id: 'nonleague_up', title: 'Out of the Non-League', desc: 'Win promotion from the National League' },
+    { id: 'top_flight_title', title: 'Top of the Pyramid', desc: 'Win the Premier League' },
+    { id: 'survive', title: 'Great Escape', desc: 'Survive a season the board feared relegation' },
+    { id: 'games100', title: 'Centurion', desc: 'Manage 100 matches' },
+    { id: 'board_love', title: 'Untouchable', desc: 'Reach 95 board confidence' },
+    { id: 'fans_love', title: 'Cult Hero', desc: 'Reach 95 fan mood' },
+  ],
+
   ai: {
     easy: { ratingBonus: -3 }, normal: { ratingBonus: 0 }, hard: { ratingBonus: +3 },
   },
 
   tipsForMatches: 3,
   tips: [
-    'Gold edge on a sticker = in your starting XI.',
-    'Attacking mentality creates more chances but concedes more too.',
+    'Tap Shout to change the game: Push up when chasing, Calm it down when ahead.',
+    'Pause to make substitutions. Tired legs (low fitness) cost you late on.',
     'The Club tab shows what the board expects and how patient they are.',
-    'Free agents and legends live in the Market. Watch the wage bill.',
+    'Free agents and legends live in Club › Market. Watch the wage bill.',
   ],
+  nations: ['ENG','SCO','WAL','NIR','IRL','ESP','FRA','GER','ITA','POR','NED','BEL','BRA','ARG','USA','MEX','JPN','KOR','AUS','NGA','GHA','BER'],
 };
 if (typeof module !== 'undefined') module.exports = DATA;
