@@ -67,7 +67,9 @@
   Nav.define('settings', () => {
     const p = S.prefs, body = el('div', 'settings');
     body.append(
-      cycler('Match speed', [[1, 'Normal'], [2, 'Fast'], [4, 'Very fast']], p.speed, v => G.setPrefs({ speed: v })),
+      cycler('Match speed', [[1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']], p.speed, v => G.setPrefs({ speed: v })),
+      cycler('Commentary voice', [[true, 'On'], [false, 'Off']], p.voice !== false, v => G.setPrefs({ voice: v })),
+      cycler('Read commentary aloud', [[false, 'Off'], [true, 'On']], !!p.tts, v => G.setPrefs({ tts: v })),
       cycler('Sound effects', [[0, 'Off'], [.4, 'Low'], [.8, 'High']], p.sfx, v => G.setPrefs({ sfx: v })),
       cycler('Crowd ambience', [[0, 'Off'], [.3, 'Low'], [.6, 'High']], p.crowd, v => { G.setPrefs({ crowd: v }); Sound.crowd(.35); }),
       cycler('Haptics', [[true, 'On'], [false, 'Off']], p.haptics, v => G.setPrefs({ haptics: v })),

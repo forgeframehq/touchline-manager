@@ -180,7 +180,7 @@ const Sim = (() => {
     if (HK.afterMatch) HK.afterMatch(m, ratings);
     let potm = null; for (const id in ratings) if (!potm || ratings[id] > ratings[potm]) potm = id;
     m.ratings = ratings; m.potm = potm ? +potm : null;
-    return { gH: m.gH, gA: m.gA, events: m.events, total: m.total, ratings, potm: m.potm };
+    return { gH: m.gH, gA: m.gA, events: m.events, total: m.total, ratings, potm: m.potm, st: m.st };
   }
   function playMatch(home, away, seed, neutral) { const m = createMatch(Object.assign({}, home, { ai: true }), Object.assign({}, away, { ai: true }), seed, { neutral }); return finishMatch(m); }
 

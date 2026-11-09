@@ -5,8 +5,9 @@
 const Sound = (() => {
   const BANK = { tap: 4, select: 3, back: 3, swipe: 3, card: 3, error: 2, hold: 2, toast: 2, coin: 3, ach: 2, stamp: 2, camera: 2, phone: 2,
     whistle1: 3, whistle2: 2, whistle3: 2, kick: 5, post: 2, net: 3, ooh: 4, goal: 4, groan: 3, applause: 2, boo: 2, chant: 3,
-    sting_unveil: 2, sting_trophy: 1, sting_sacked: 1, sting_signing: 1, sting_deadline: 1, amb_stadium: 1, amb_menu: 1 };
-  const VOL = { tap: .55, swipe: .6, card: .7, select: .75, back: .65, hold: .6, error: .7, toast: .7, kick: .8, chant: .7, ooh: .9, goal: 1, groan: .85 };
+    sting_unveil: 2, sting_trophy: 1, sting_sacked: 1, sting_signing: 1, sting_deadline: 1, amb_stadium: 1, amb_menu: 1,
+    vc_goal: 3, vc_save: 2, vc_post: 2, vc_chance: 2, vc_red: 2, vc_penalty: 1, vc_penmiss: 1, vc_var: 1, vc_nogoal: 1, vc_kickoff: 1, vc_ht: 1, vc_ft: 1 };
+  const VOL = { vc_goal: 1.3, vc_save: 1.2, vc_post: 1.2, vc_chance: 1.1, vc_red: 1.2, vc_penalty: 1.2, vc_penmiss: 1.2, vc_var: 1.1, vc_nogoal: 1.2, vc_kickoff: 1.1, vc_ht: 1.1, vc_ft: 1.2, tap: .55, swipe: .6, card: .7, select: .75, back: .65, hold: .6, error: .7, toast: .7, kick: .8, chant: .7, ooh: .9, goal: 1, groan: .85 };
   let ctx = null, master = null, buf = {}, loading = false, prefs = { sfx: .8, crowd: .5, haptics: true };
   const beds = {};  // name -> {src, gain}
   let bedName = null, bedLevel = 0;
@@ -32,7 +33,7 @@ const Sound = (() => {
       const list = buf[name]; if (!list || !list.length) return;
       const src = ctx.createBufferSource(), g = ctx.createGain();
       src.buffer = list[Math.floor(Math.random() * list.length)];
-      src.playbackRate.value = (opts && opts.rate) || (1 + (Math.random() - .5) * .08);
+      src.playbackRate.value = (opts && opts.rate) || (name.startsWith('vc_') ? 1 : 1 + (Math.random() - .5) * .08);
       g.gain.value = prefs.sfx * (VOL[name] || .9) * ((opts && opts.vol) || 1);
       src.connect(g).connect(master); src.start();
     } catch (e) {}

@@ -88,5 +88,13 @@ const Art = (() => {
   }
   const stadiumImg = cap => 'assets/art/' + (cap >= 55000 ? 'st_giant' : cap >= 38000 ? 'st_large' : cap >= 25000 ? 'st_mid' : cap >= 15000 ? 'st_compact' : cap >= 7000 ? 'st_small' : 'st_nonleague') + '.webp';
   const accentOf = () => '#e7c25a';
-  return { preload, crest, crestURL, shirt, shirtURL, kitPattern, trophy, ball, badge, stadiumImg, inkOn, lum, accentOf };
+  // away kit when the colours clash: try the club's second colour, then white, then near-black
+  const rgb = h => { const v = parseInt((h || '#888').replace('#', ''), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; };
+  const dist = (a, b) => { const x = rgb(a), y = rgb(b); return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); };
+  function awayKit(home, away) {
+    if (dist(home[0], away[0]) > 120) return away;
+    if (dist(home[0], away[1]) > 120) return [away[1], away[0]];
+    return dist(home[0], '#f4f4f4') > 140 ? ['#f4f4f4', away[0]] : ['#1d1d1f', away[1] === '#1d1d1f' ? '#e7c25a' : away[1]];
+  }
+  return { awayKit, preload, crest, crestURL, shirt, shirtURL, kitPattern, trophy, ball, badge, stadiumImg, inkOn, lum, accentOf };
 })();

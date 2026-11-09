@@ -49,10 +49,10 @@ const DATA = {
     homeAdvantage: 1.1,
     strengthExponent: 2.2,     // ratings sit close together (70–90), so gaps must bite
     attackExponent: 1.2,
-    goalFromChance: 0.088,
+    goalFromChance: 0.082,
     finishExponent: 1.4,   // shooter vs keeper
     fatiguePerMinute: 0.32,
-    injuryChancePerMatch: 0.03, injuryWeeks: [1, 6],
+    injuryChancePerMatch: 0.015, injuryWeeks: [1, 6],
     moraleWin: +6, moraleDraw: +1, moraleLoss: -5, moraleClamp: [20, 100],
   },
 

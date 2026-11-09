@@ -156,7 +156,7 @@
   HK.team = (career, t, mine) => {
     if (!mine) return;
     t.tm = tmods(career); t.chem = chemistry(career); const T = tac(career);
-    t.sp = T.sp; t.oppI = T.opp; t.oppMarks = T.opp;   // my instructions on opposition players, keyed by their player id
+    t.sp = T.sp; t.oppI = T.opp; t.oppMarks = T.opp; t.pens = career.setp && career.setp.pens;   // my instructions on opposition players, keyed by their player id
     t.tactics = Object.assign({}, career.tactics[career.me]);
   };
   // set pieces and cards, minute by minute
