@@ -9,7 +9,8 @@
 
   function view(car) {
     const c = G.me(), box = el('div', 'stack grow');
-    box.innerHTML = `<div class="stadhero clubban" style="background-image:url(${Art.stadiumImg(c.capacity)})"><span class="crest">${Art.crest(c)}</span><div><b>${esc(c.stadium)}</b><small>${c.capacity.toLocaleString()} seats · ${esc(Sim.repTier(c.rep))} reputation · board ${Math.round(car.board.confidence)}%</small></div></div>`;
+    box.innerHTML = `<div class="stadhero clubban" data-3d="1" style="background-image:url(${Art.stadiumImg(c.capacity)})"><span class="v3badge">3D</span><span class="crest">${Art.crest(c)}</span><div><b>${esc(c.stadium)}</b><small>${c.capacity.toLocaleString()} seats · ${esc(Sim.repTier(c.rep))} reputation · board ${Math.round(car.board.confidence)}%</small></div></div>`;
+    box.firstElementChild.onclick = () => Nav.push('stadium3d', { club: c.id });
     const grid = el('div', 'roomgrid');
     for (const [k, label, icon] of ROOMS) { const t = el('button', 'room', `${I(icon)}<b>${label}</b><small>${roomSub(car, k)}</small>`); t.onclick = () => Nav.push(k === 'manager' ? 'profile' : 'cl_' + k); grid.appendChild(t); }
     box.appendChild(grid);
@@ -22,7 +23,16 @@
   }
   const room = (key, icon, title, sub, body, extra) => Object.assign({ header: G.header(icon, title, sub), body }, extra || {});
 
-  Nav.define('cl_stadium', () => { const car = S.career, c = G.me(), v = HubUI.CLUB.stadium(car, c); return room('stadium', 'stadium', 'Stadium', c.stadium, v.el, { mount: v.mount }); });
+  Nav.define('cl_stadium', () => { const car = S.career, c = G.me(), v = HubUI.CLUB.stadium(car, c); return room('stadium', 'stadium', 'Stadium', c.stadium, v.el, { mount: v.mount, action: { label: '3D View', icon: 'stadium', go: () => Nav.push('stadium3d', { club: c.id }) } }); });
+  Nav.define('stadium3d', prm => {
+    const car = S.career, c = (car ? car.clubs : WORLD.clubs).find(k => k.id === prm.club), box = el('div', 'viewer3d');
+    box.innerHTML = `<div class="v3-load">${Art.ball()}<b>Building the stadium…</b></div><div class="v3-plate"><b>${esc(c.stadium)}</b><small>${c.capacity.toLocaleString()} seats · artist's impression · drag to turn, pinch to zoom</small></div>`;
+    let v = null;
+    return { header: G.header('stadium', '3D Stadium', c.name), body: box,
+      extra: [{ label: 'Day / Night', go: () => { if (v) { v.setNight(!v.night); Sound.play('intro_light', { vol: .5 }); } } }, { label: 'Spin', go: () => { if (v) { prm.still = !prm.still; v.spin(!prm.still); } } }],
+      mount: () => { import('./stadium3d.js').then(mod => { v = mod.mount(box, c, { onReady: () => { const l = box.querySelector('.v3-load'); l && l.remove(); }, onError: () => { const l = box.querySelector('.v3-load'); if (l) l.innerHTML = '<b>3D needs a newer phone browser.</b>'; } }); })
+        .catch(() => { const l = box.querySelector('.v3-load'); if (l) l.innerHTML = '<b>3D is not available on this device.</b>'; }); } };
+  });
   Nav.define('cl_facilities', () => { const car = S.career, v = HubUI.CLUB.facilities(car); return room('facilities', 'hammer', 'Facilities', 'Upgrade with the hold button', v.el); });
   Nav.define('cl_youth', () => { const car = S.career, v = HubUI.CLUB.youth(car); return room('youth', 'youth', 'Youth Academy', `${['', 'Local', 'National', 'International'][car.academy || 1]} recruitment · ask the board to widen it`, v.el, { mount: v.mount }); });
   Nav.define('cl_finances', () => { const car = S.career, v = HubUI.CLUB.finances(car), inc = car.lastIncome || { merch: 0, sponsor: 0, staff: Sim.staffWages(car) };

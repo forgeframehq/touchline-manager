@@ -539,3 +539,9 @@ p { margin: 0 0 8px; } .center { text-align: center; } .note { font-size: 13px; 
 .cr { position: relative; display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; height: 26px; padding: 0 6px; border-radius: 7px; background: rgba(255,255,255,.04); font: 500 12.5px var(--sans); text-align: center; overflow: hidden; }
 .cr b { font: 700 14px var(--sans); position: relative; z-index: 1; } .cr span { position: relative; z-index: 1; } .cr i { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(43,109,179,.35) var(--a), transparent var(--a)), linear-gradient(270deg, rgba(231,194,90,.3) var(--b), transparent var(--b)); opacity: .6; }
 .oneline { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.viewer3d { position: relative; flex: 1; min-height: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--golddim); background: radial-gradient(ellipse at 50% 35%, #173a28, #050e09 75%); touch-action: none; }
+.viewer3d canvas { display: block; width: 100% !important; height: 100% !important; }
+.v3-load { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); } .v3-load svg { width: 44px; animation: spin 1s linear infinite; }
+.v3-plate { position: absolute; left: 10px; right: 10px; bottom: 10px; padding: 8px 12px; border-radius: 12px; background: rgba(5,14,9,.78); border: 1px solid var(--golddim); pointer-events: none; } .v3-plate b { display: block; font: 700 17px var(--serif); } .v3-plate small { font: 500 11.5px var(--sans); color: var(--muted); }
+.v3badge { position: absolute; right: 10px; top: 10px; z-index: 2; padding: 2px 9px; border-radius: 8px; background: var(--goldgrad); color: #1c1405; font: 800 12px var(--sans); }

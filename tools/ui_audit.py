@@ -123,6 +123,7 @@ def flows(pg, shot):
     ev("TLM.hubTab('club')"); shot('club_menu')
     for s in ['stadium', 'facilities', 'training', 'staff', 'youth', 'finances', 'board', 'history', 'sponsors']: ev(f"Nav.push('cl_{s}')", 700); shot(f'cl_{s}'); ev("Nav.backTo('hub')", 400)
     ev("Nav.push('cl_hire',{role:'coach'})", 700); shot('cl_hire'); ev("Nav.backTo('hub')", 400)
+    ev("Nav.push('stadium3d',{club:TLM.career.me})", 6000); shot('stadium3d'); ev("Nav.backTo('hub')", 400)
     ev("const sq=TLM.Sim.squadOf(TLM.career,TLM.career.me); Nav.push('compare',{a:sq[3].id,b:sq[4].id})", 700); shot('compare'); ev("Nav.backTo('hub')", 400)
     ev("const sq=TLM.Sim.squadOf(TLM.career,TLM.career.me); Nav.push('compare',{a:sq[3].id})", 700); shot('compare_pick'); ev("Nav.backTo('hub')", 400)
     ev("const c=TLM.career; c.events=[TLM.Sim.makeEvent(c,new RNG(5))]; TLM.hubTab('office')", 900); shot('event_card'); ev("Nav.closeCard(); TLM.career.events=[]", 400)
