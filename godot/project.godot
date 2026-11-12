@@ -1,0 +1,37 @@
+; Touchline Manager — Godot 4.5 project. Portrait only; the viewport is 390 wide and as tall as the phone.
+config_version=5
+
+[application]
+config/name="Touchline Manager"
+config/version="2.0.0"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.5", "Mobile")
+boot_splash/bg_color=Color(0.051, 0.063, 0.082, 1)
+boot_splash/show_image=false
+config/icon="res://icon.svg"
+
+[autoload]
+DB="*res://core/db.gd"
+Sim="*res://core/sim.gd"
+Game="*res://core/game.gd"
+UI="*res://ui/ui.gd"
+
+[display]
+window/size/viewport_width=390
+window/size/viewport_height=844
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep_width"
+window/handheld/orientation=1
+
+[gui]
+theme/default_font_multichannel_signed_distance_field=false
+
+[input_devices]
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.051, 0.063, 0.082, 1)
+anti_aliasing/quality/msaa_2d=2
