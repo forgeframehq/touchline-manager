@@ -1,19 +1,21 @@
-# Touchline Manager — Godot version
+# Touchline Manager (Godot)
 
-The remake of the game in Godot 4.5 (GDScript). The web game in the repo root stays as it is until this catches up.
+A football manager game where you are the manager: your desk, your week, your matchday. Godot 4.5, GDScript, portrait phone.
+The older web game in the repo root is a separate, earlier game.
 
-- `core/` — the game itself, no UI: `sim.gd` (matches, weeks, seasons; a line-for-line port of `js/sim.js` that gives identical results for the same seed), `rng.gd`, `db.gd` (data), `game.gd` (career, saving), `commentary.gd`.
-- `data/game.json` — every rule number, club, squad and legend. Written by `node tools/export_godot_data.mjs` from the web game's data files; don't edit by hand.
-- `ui/` — the look (`ui.gd`: colours, fonts, builders), the screen frame and tab bar (`nav.gd`), crests, icons and the live 2D pitch.
-- `screens/` — one file per screen. Every screen fits the phone and never scrolls; long lists page.
-- `tests/` — `season.tscn` (headless season, compare with `node tools/export_godot_data.mjs ref`) and `shots.gd` (screenshot tour).
+- `core/sim.gd` — the world and your week: players (attributes 1–20, personality, morale, trust), squads and line-ups, league, money, the board,
+  what lands on your desk, how you spend your three blocks of time (training, one-to-one, scouting, press), transfers, end of season.
+- `core/engine.gd` — the match engine. Each step the player on the ball passes, dribbles, crosses or shoots; outcomes come from his attributes
+  against the nearest opponents, pressure, condition, morale, tactics and the week's preparation. What the pitch shows is the engine's own state.
+- `core/game.gd` — the running career and saving. `core/db.gd` + `data/game.json` — clubs, squads and name pools (from `tools/export_godot_data.mjs`).
+- `ui/` — look and builders (`ui.gd`; the accent is your club's colour), navigation, crests, icons, the live pitch.
+- `screens/` — one file per screen. Screens never scroll; long lists page.
+- `tests/balance.tscn` — headless: engine sample across league fixtures and a full season. `tests/shots.gd` — screenshot tour.
 
-Run the checks:
+Checks:
 
     godot --headless --path godot --import
-    godot --headless --path godot res://tests/season.tscn
-    xvfb-run godot --path godot --rendering-method gl_compatibility --resolution 390x844 -- --shots=/some/dir
+    godot --headless --path godot res://tests/balance.tscn      # expect about 2.5 goals a match in the top division, 11 shots a team
+    SHOTS="letter:0,training,talk:pick,scout,match:live,match:ft" xvfb-run godot --path godot --rendering-method gl_compatibility --resolution 390x844 -- --shots=/some/dir
 
-Android APK: push a commit whose message contains `[godot]`; `.github/workflows/godot-android.yml` builds it and attaches it to a GitHub Release.
-
-Not ported yet (still only in the web game): the FM layer (`js/fm.js`: roles, contracts, transfers, cups, stats), match day v2 (`js/matchsim.js`: xG, cards, penalties, VAR) and career depth (`js/career.js`: training, happiness, staff, loans, sponsors, records).
+APK: push a commit whose message contains `[godot]`.

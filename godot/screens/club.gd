@@ -7,23 +7,25 @@ func build() -> void:
 	root.add_child(header(club.name, "%s · %s · %s" % [DB.divisions[club.div].name, club.stadium, Sim.commas(club.capacity)], Crest.make(club, 36)))
 	var v := UI.vbox(10)
 	var two := UI.hbox(8)
-	two.add_child(_meter("Board confidence", c.board.confidence, c.brief.text))
-	two.add_child(_meter("Fan mood", c.fans, "Gates %d%% full" % int(round(Sim.attendance(c) * 100))))
+	two.add_child(_meter("The board", c.board, c.objective.text))
+	var f := Sim.week_money(c, c.me, true)
+	two.add_child(_meter("The fans", c.fans, "Ground %d%% full" % int(round(f.fill * 100))))
 	v.add_child(two)
-	var f := Sim.week_finance(c, c.me, true)
 	v.add_child(_list("Money each home week", [["Gate receipts", UI.money(f.gate), UI.TEXT], ["Commercial", UI.money(f.commercial), UI.TEXT], ["TV money", UI.money(f.tv), UI.TEXT],
 		["Wages", "-" + UI.money(f.wages), UI.WARN], ["Net", UI.money(f.net), UI.GOOD if f.net >= 0 else UI.BAD]], UI.money(c.balances[c.me]) + " in the bank"))
 	var mg: Dictionary = c.manager
-	var tro: String = "None yet" if mg.trophies.is_empty() else "%d: %s" % [mg.trophies.size(), mg.trophies[-1].label]
-	v.add_child(_list(mg.name, [["Record", "%d played · %d won · %d drawn · %d lost" % [mg.games, mg.w, mg.d, mg.l], UI.TEXT], ["Honours", tro, UI.TEXT],
-		["Best unbeaten run", "%d matches" % c.stats.bestUnbeaten, UI.TEXT]], "Manager"))
-	var left := h - 62 - 100 - 216 - 148 - 50
+	v.add_child(_list(mg.name, [["Record", "%d played · %d won · %d drawn · %d lost" % [mg.games, mg.w, mg.d, mg.l], UI.TEXT],
+		["Honours", "None yet" if mg.trophies.is_empty() else ", ".join(mg.trophies.slice(-2)), UI.TEXT]], "Manager"))
+	var market := UI.btn("Transfer market   →", "ghost", 48)
+	market.pressed.connect(func(): UI.nav.go("market"))
+	v.add_child(market)
+	var left := h - 62 - 100 - 216 - 118 - 58 - 50
 	var n := clampi(int((left - 34) / 40), 0, 4)
-	if n > 0:
+	if n > 0 and not c.news.is_empty():
 		var p := UI.panel(0)
 		var nv := UI.vbox(0)
-		nv.add_child(UI.pad(UI.fixed(UI.label("News", 13, UI.TEXT, 700), 0, 32), 14, 0, 14, 0))
-		for item in c.news.slice(0, n):
+		nv.add_child(UI.pad(UI.fixed(UI.label("Transfer news", 13, UI.TEXT, 700), 0, 32), 14, 0, 14, 0))
+		for item in c.news.slice(0, n).map(func(t): return {"text": t}):
 			nv.add_child(UI.line())
 			var l := UI.wrap(UI.label(item.text, 12, UI.MUTED), 2)
 			l.custom_minimum_size.y = 38

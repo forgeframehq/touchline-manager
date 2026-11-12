@@ -14,34 +14,35 @@ func _ready() -> void:
 	nav.current.step = "confirm"
 	nav.current.rebuild()
 	await _snap("03_confirm")
-	Game.career = Sim.new_career(1000, "arsenal", {"name": "Sudhi"})
-	for i in 11:
-		Sim.play_week(Game.career)
-	nav.tab("office")
-	await _snap("04_office")
+	Game.career = Sim.new_career(1000, OS.get_environment("CLUB") if OS.get_environment("CLUB") != "" else "arsenal", {"name": "Sudhi"})
+	var c: Dictionary = Game.career
+	for i in 9:
+		Game.kick_off()
+		while not Game.engine.done:
+			Game.engine.step()
+		Game.full_time()
+	nav.tab("desk")
+	await _snap("04_desk")
 	for s in OS.get_environment("SHOTS").split(",", false):
 		var parts := s.split(":")
-		if parts[0] in ["squad", "tactics", "league", "club", "office"]:
+		if parts[0] in ["squad", "tactics", "league", "club", "desk"]:
 			nav.tab(parts[0])
 		elif parts[0] == "player":
 			nav.go("player", {"id": Sim.squad_of(Game.career, Game.career.me)[18].id})
+		elif parts[0] == "letter":
+			nav.go("moment", {"item": c.desk[int(parts[1]) if parts.size() > 1 else 0]})
+		elif parts[0] in ["training", "talk", "scout", "press"]:
+			nav.go("moment", {"action": parts[0]})
 		else:
 			nav.go(parts[0])
 		if parts.size() > 1 and nav.current.has_method("test_state"):
 			nav.current.test_state(parts[1])
 			if parts[1] == "watch":
 				for k in 6:
-					for i in 70:
+					for i in 50:
 						await get_tree().process_frame
 					await RenderingServer.frame_post_draw
 					get_viewport().get_texture().get_image().save_png(out_dir.path_join("20_watch_%d.png" % k))
-			if parts[1] == "real":
-				var t0 := Time.get_ticks_msec()
-				while nav.current.get("state") != "ft" and Time.get_ticks_msec() - t0 < 60000:
-					if nav.current.get("state") == "live" and nav.current.paused:
-						nav.current.paused = false      # half-time
-					await get_tree().process_frame
-				print("real match reached: ", nav.current.get("state"), " in ", Time.get_ticks_msec() - t0, " ms")
 		await _snap("10_" + s.replace(":", "_"))
 	get_tree().quit()
 

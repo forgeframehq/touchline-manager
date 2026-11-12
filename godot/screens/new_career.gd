@@ -7,7 +7,6 @@ var page := 0
 var picked := ""
 var step := "pick"
 var manager_name := "The Boss"
-var legends := false
 
 func on_back() -> bool:
 	if step == "confirm":
@@ -20,7 +19,7 @@ func build() -> void:
 	if step == "confirm":
 		_confirm()
 		return
-	root.add_child(header("Choose your club", "Any club in the English pyramid", null, true))
+	root.add_child(header("Choose your club", "Any of 116 clubs in England", null, true))
 	var labels := DB.division_list.map(func(d): return DIV_LABELS.get(d.id, d.name))
 	root.add_child(UI.pad(UI.segments(labels, div_i, func(i):
 		div_i = i
@@ -48,7 +47,7 @@ func build() -> void:
 		var r := UI.vbox(1)
 		r.alignment = BoxContainer.ALIGNMENT_CENTER
 		r.add_child(UI.right(UI.cap(Sim.rep_tier(c.rep), UI.ACCENT if c.id == picked else UI.MUTED)))
-		r.add_child(UI.right(UI.label(Sim.preview_brief(c.id), 11, UI.MUTED)))
+		r.add_child(UI.right(UI.label("Reputation %d" % c.rep, 11, UI.MUTED)))
 		hb.add_child(r)
 		hb.add_child(_gap(4))
 		var b := UI.row(hb, row_h, UI.RAISED if c.id == picked else UI.CLEAR)
@@ -81,8 +80,8 @@ func _confirm() -> void:
 	var t := UI.vbox(3)
 	t.alignment = BoxContainer.ALIGNMENT_CENTER
 	UI.grow(t)
-	t.add_child(UI.cap("The board's brief"))
-	t.add_child(UI.label(Sim.preview_brief(picked), 20, UI.TEXT, 700, "num"))
+	t.add_child(UI.cap("The job"))
+	t.add_child(UI.label("Manager of %s" % c.short, 24, UI.TEXT, 800, "num"))
 	t.add_child(UI.label("You replace %s" % c.manager, 12, UI.MUTED))
 	hb.add_child(t)
 	top.add_child(hb)
@@ -110,15 +109,9 @@ func _confirm() -> void:
 	le.add_theme_stylebox_override("focus", UI.box(UI.PANEL, 12, UI.ACCENT, 12))
 	le.text_changed.connect(func(s): manager_name = s)
 	v.add_child(le)
-	var lg := UI.btn("Legends in the game: %s" % ("On" if legends else "Off"), "ghost", 48)
-	lg.pressed.connect(func():
-		legends = not legends
-		rebuild())
-	v.add_child(lg)
-	v.add_child(UI.label("With legends on, %d all-time greats at their peak are free agents or at the biggest clubs." % DB.legends.size(), 12, UI.MUTED))
-	v.get_child(v.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(UI.wrap(UI.label("The board will tell you what they expect once you have signed. The players will make up their own minds.", 12, UI.MUTED), 3, true))
 	root.add_child(UI.pad(v, 16, 4, 16, 0))
 	root.add_child(UI.spacer(true))
 	root.add_child(main_action("Start career", func():
-		Game.new_game(picked, manager_name.strip_edges() if manager_name.strip_edges() != "" else "The Boss", legends)
-		UI.nav.tab("office")))
+		Game.new_game(picked, manager_name.strip_edges() if manager_name.strip_edges() != "" else "The Boss")
+		UI.nav.tab("desk")))

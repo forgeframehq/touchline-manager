@@ -2,7 +2,7 @@ extends Control
 ## The frame around every screen: safe-area margins, the screen itself, and the five-tab bar at the bottom.
 ## Screens are stacked: go() pushes, back() pops, tab() starts a fresh stack on a main tab.
 
-const TABS := [["office", "Office"], ["squad", "Squad"], ["tactics", "Tactics"], ["league", "League"], ["club", "Club"]]
+const TABS := [["desk", "Desk"], ["squad", "Squad"], ["tactics", "Tactics"], ["league", "League"], ["club", "Club"]]
 const BAR_H := 60.0
 
 var stack: Array = []      # [name, params]
@@ -89,6 +89,8 @@ func _show(animate: bool) -> void:
 	if current != null:
 		host.remove_child(current)
 		current.queue_free()
+	if Game.career != null:
+		UI.set_club(Game.my_club())
 	var has_bar := TABS.any(func(t): return t[0] == screen)
 	bar.visible = has_bar
 	_build_bar(screen)

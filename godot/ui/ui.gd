@@ -2,39 +2,56 @@ extends Node
 ## The look of the game in one place: colours, fonts and the small builders every screen uses.
 ## Modern dark and flat: graphite ground, flat panels, one lime accent. Club colours only on crests, kits and pitch dots.
 
-const BG := Color("0D1015")
-const NAVBG := Color("11141A")
-const PANEL := Color("161A21")
-const RAISED := Color("1D222B")
-const LINE := Color("272D38")
-const LINE2 := Color("343B48")
-const TEXT := Color("EEF1F5")
-const MUTED := Color("9BA4B3")
-const ACCENT := Color("C6F432")
-const WARN := Color("F2B54A")
-const GOOD := Color("7EE0A1")
-const BAD := Color("F58A6B")
-const WIN := Color("2E7D5B")
-const DRAWC := Color("3A4250")
-const PITCH_A := Color("14402B")
-const PITCH_B := Color("123A27")
+const BG := Color("090D13")
+const NAVBG := Color("0C1119")
+const PANEL := Color("121923")
+const RAISED := Color("1A2431")
+const LINE := Color("222D3D")
+const LINE2 := Color("33435A")
+const TEXT := Color("F3F5F9")
+const MUTED := Color("8E9BB1")
+const PAPER := Color("EFE9DB")     # letters and reports on your desk
+const INK := Color("171B22")
+const INK2 := Color("5A6070")
+const WARN := Color("FFB648")
+const GOOD := Color("6FE3A0")
+const BAD := Color("FF7A6B")
+const WIN := Color("2E8F62")
+const DRAWC := Color("3A475A")
+const PITCH_A := Color("16432E")
+const PITCH_B := Color("133B29")
 const CLEAR := Color(0, 0, 0, 0)
+var ACCENT := Color("FFB648")      # becomes your club's colour once you have a club
 
-var _base := {}
+var _base: Font
 var _fonts := {}
 var nav   # the Nav node (ui/nav.gd), set when the game starts
 
 func _ready() -> void:
-	_base.ui = load("res://fonts/Inter.ttf")
-	_base.num = load("res://fonts/SpaceGrotesk.ttf")
+	_base = load("res://fonts/Archivo.ttf")
 
-## kind: "ui" (Inter) or "num" (Space Grotesk, for titles and numbers).
+## Takes your club's main colour as the accent, lifted until dark text reads on it.
+func set_club(club: Dictionary) -> void:
+	var c := Color(club.kit[0])
+	if c.v < 0.3 or (c.s < 0.12 and c.v < 0.6):
+		c = Color(club.kit[1])
+	if c.s < 0.12:
+		ACCENT = Color("E9EDF4")
+		return
+	var s := minf(c.s, 0.82)
+	ACCENT = Color.from_hsv(c.h, s, 1.0)
+	while ACCENT.get_luminance() < 0.4 and s > 0.2:
+		s -= 0.04
+		ACCENT = Color.from_hsv(c.h, s, 1.0)
+
+## kind: "ui" (Archivo) or "num" (Archivo condensed, for headlines and numbers).
 func font(kind := "ui", weight := 400) -> Font:
 	var key := "%s%d" % [kind, weight]
 	if not _fonts.has(key):
 		var f := FontVariation.new()
-		f.base_font = _base[kind]
-		f.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): weight}
+		f.base_font = _base
+		var ts := TextServerManager.get_primary_interface()
+		f.variation_opentype = {ts.name_to_tag("wght"): weight, ts.name_to_tag("wdth"): 78 if kind == "num" else 100}
 		_fonts[key] = f
 	return _fonts[key]
 

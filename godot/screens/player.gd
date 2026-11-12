@@ -5,7 +5,7 @@ func build() -> void:
 	var c := career()
 	var p: Dictionary = Sim.player(c, params.id)
 	var club_name := Sim.club_name(c, p.club) if p.club != null else "Free agent"
-	root.add_child(header(p.name, "%s · %s" % [DB.DATA.positions[p.pos].name, club_name], null, true))
+	root.add_child(header(p.name, "%s · %s · %s" % [DB.DATA.positions[p.pos].name, club_name, p.trait], null, true))
 	var v := UI.vbox(10)
 	var top := UI.hbox(8)
 	for f in [["Overall", str(p.rating), UI.ACCENT], ["Potential", str(p.pot), UI.TEXT], ["Age", str(p.age), UI.TEXT], ["Nation", p.nat if p.nat != "" else "–", UI.TEXT]]:
@@ -20,9 +20,10 @@ func build() -> void:
 	var st := UI.panel(0)
 	var sv := UI.vbox(0)
 	var rows := [["Condition", "%d%%" % int(round(p.fitness)), UI.cond_color(p.fitness)], ["Morale", str(int(round(p.morale))), UI.cond_color(p.morale + 15)],
+		["Trust in you", "%d%%" % int(round(p.trust)), UI.cond_color(p.trust + 25)],
 		["Status", "Injured, %d weeks" % p.injured if p.injured > 0 else "Available", UI.BAD if p.injured > 0 else UI.GOOD],
 		["Wage", "£%dk a week" % p.wage, UI.TEXT], ["Value", "£%.1fM" % Sim.value(p), UI.TEXT],
-		["This season", "%d apps · %d goals" % [p.seasonApps, p.seasonGoals], UI.TEXT], ["Career here", "%d apps · %d goals" % [p.apps, p.goals], UI.TEXT]]
+		["This season", "%d games · %d goals%s" % [p.seasonApps, p.seasonGoals, " · %.1f average" % Sim.avg_rating(p) if p.seasonApps > 0 else ""], UI.TEXT]]
 	var show := rows if h > 760 else rows.slice(0, 5)
 	for i in show.size():
 		if i > 0:
@@ -37,8 +38,9 @@ func build() -> void:
 	v.add_child(UI.cap("Attributes"))
 	var g := UI.grid(2, 14)
 	g.add_theme_constant_override("v_separation", 6)
-	var keys: Array = DB.DATA.positions[p.pos].keys
-	var attrs: Array = DB.DATA.attributes.duplicate()
+	var prof: Dictionary = Sim.PROFILE[Sim.PROFILE_OF[p.pos]]
+	var keys: Array = prof.keys().filter(func(k): return prof[k] >= 1.0)
+	var attrs: Array = Sim.ATTRS.duplicate()
 	if p.pos != "GK":
 		attrs.erase("handling")
 		attrs.erase("reflexes")
@@ -49,13 +51,24 @@ func build() -> void:
 		hb.custom_minimum_size.y = 26
 		hb.add_child(UI.grow(UI.label(a.capitalize(), 13, UI.TEXT if keys.has(a) else UI.MUTED, 600 if keys.has(a) else 400)))
 		var bar := Bar.new()
-		bar.value = val / 99.0
-		bar.color = UI.ACCENT if val >= 80 else UI.GOOD if val >= 65 else UI.WARN if val >= 50 else UI.BAD
+		bar.value = val / 20.0
+		bar.color = UI.ACCENT if val >= 16 else UI.GOOD if val >= 13 else UI.WARN if val >= 9 else UI.BAD
 		hb.add_child(bar)
 		hb.add_child(UI.right(UI.num(str(val), 13), 22))
 		g.add_child(hb)
 	v.add_child(g)
 	root.add_child(UI.pad(v, 16, 0, 16, 0))
+	if p.club != c.me and params.get("buy", false):
+		root.add_child(UI.spacer(true))
+		var why := Sim.can_sign(c, p)
+		if why != "":
+			root.add_child(UI.centre(UI.label(why, 12, UI.WARN)))
+		var act := main_action("Sign for %s" % UI.money(Sim.asking_price(c, p)), func():
+			Sim.sign_player(c, p)
+			Game.save()
+			UI.nav.tab("squad"), false)
+		act.get_child(0).disabled = why != ""
+		root.add_child(act)
 
 class Bar extends Control:
 	var value := 0.5

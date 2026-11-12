@@ -15,9 +15,9 @@ func build() -> void:
 	var c := career()
 	var t: Dictionary = c.tactics[c.me]
 	var fx = Sim.my_fixture(c)
-	var nxt := "No match this week" if fx == null else "Next: %s (%s)" % [Sim.club_name(c, fx.a if fx.home else fx.h), "H" if fx.home else "A"]
-	root.add_child(header("Tactics", "Chemistry %d · %s" % [Sim.chemistry(c), nxt]))
-	root.add_child(UI.pad(UI.segments(["Line-up", "Instructions"], tab_i, func(i):
+	var nxt := "No match this week" if fx == null else "Next: %s (%s)" % [Sim.club_name(c, fx.opp), "H" if fx.home else "A"]
+	root.add_child(header("Tactics", "Dressing room %d · %s" % [Sim.chemistry(c), nxt]))
+	root.add_child(UI.pad(UI.segments(["Team sheet", "How we play"], tab_i, func(i):
 		tab_i = i
 		selected = -1
 		rebuild()), 16, 0, 16, 8))
@@ -124,7 +124,7 @@ class Pitch extends Control:
 			nm.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
 			nm.add_theme_constant_override("shadow_offset_y", 1)
 			v.add_child(nm)
-			var natural: bool = DB.DATA.grid.fits.get(slot.code, []).has(p.pos)
+			var natural: bool = Sim.misfit(p, slot.code) <= 2
 			var tag := UI.panel(0, Color(UI.BG, 0.78) if natural else Color(UI.WARN, 0.95), 4, UI.CLEAR)
 			tag.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			tag.add_child(UI.pad(UI.label("%s · %d%%" % [slot.code, int(round(p.fitness))], 9, UI.TEXT if natural else UI.BG, 700), 5, 0, 5, 0))
@@ -163,69 +163,29 @@ class Dot extends Control:
 
 # ---------- instructions ----------
 func _instructions(c: Dictionary, t: Dictionary) -> void:
-	var v := UI.vbox(8)
-	var roomy := h > 740
-	var keys: Array = DB.DATA.mentality7
-	v.add_child(_stepper("Mentality", DB.DATA.mentality[t.mentality].label, keys.find(t.mentality), keys.size(), func(d):
-		t.mentality = keys[clampi(keys.find(t.mentality) + d, 0, keys.size() - 1)]
-		c.preset = null
-		_changed(), false))
-	var styles: Array = DB.DATA.styles.keys()
-	v.add_child(_title("Style", "The board want %s football" % DB.DATA.styles[c.brief.style].label.to_lower()))
-	v.add_child(UI.segments(styles.map(func(k): return DB.DATA.styles[k].label), styles.find(t.style), func(i):
-		t.style = styles[i]
-		_changed(), 40, 13, "accent"))
-	for key in ["press", "line", "pass"]:
-		var ins: Dictionary = DB.DATA.instructions[key]
-		var p := UI.panel(0)
-		var hb := UI.hbox(8)
-		hb.custom_minimum_size.y = 50 if roomy else 44
-		var tv := UI.vbox(0)
-		tv.alignment = BoxContainer.ALIGNMENT_CENTER
-		UI.grow(tv)
-		tv.add_child(UI.cap(ins.label))
-		tv.add_child(UI.label(ins.steps[c.instr[key] - 1], 15, UI.TEXT, 600))
-		hb.add_child(tv)
-		for d in [-1, 1]:
-			var b := UI.btn("–" if d < 0 else "+", "ghost", 40, 18)
-			b.custom_minimum_size.x = 48
-			b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			b.disabled = (d < 0 and c.instr[key] <= 1) or (d > 0 and c.instr[key] >= 5)
-			b.pressed.connect(func():
-				c.instr[key] = clampi(c.instr[key] + d, 1, 5)
-				c.preset = null
-				_changed())
-			hb.add_child(b)
-		p.add_child(UI.pad(hb, 14, 0, 8, 0))
-		v.add_child(p)
-	var g := UI.grid(2, 6)
-	for key in DB.DATA.toggles:
-		var on: bool = c.instr.toggles.get(key, false)
-		var b := UI.btn(DB.DATA.toggles[key].label, "accent" if on else "off", 40, 12)
-		UI.grow(b)
-		b.pressed.connect(func():
-			c.instr.toggles[key] = not on
-			c.preset = null
-			_changed())
-		g.add_child(b)
-	v.add_child(_title("Team instructions", ""))
-	v.add_child(g)
-	if h > 800:
-		v.add_child(_title("Quick set-ups", "One tap sets everything above"))
-		var pg := UI.grid(3, 6)
-		for key in DB.DATA.presets:
-			var b := UI.btn(DB.DATA.presets[key].label, "on" if c.preset == key else "off", 40, 11)
-			UI.grow(b)
-			b.pressed.connect(func():
-				var P: Dictionary = DB.DATA.presets[key]
-				t.mentality = P.mentality
-				t.style = P.style
-				c.instr = {"press": int(P.press), "line": int(P.line), "pass": int(P.pass), "toggles": P.toggles.duplicate()}
-				c.preset = key
-				_changed())
-			pg.add_child(b)
-		v.add_child(pg)
-	root.add_child(UI.pad(v, 16, 0, 16, 0))
+	var v := UI.vbox(10)
+	for row in [["mentality", "Mentality", Sim.MENTALITY, "How many you commit forward, and how often you look for the killer pass"],
+			["tempo", "Tempo", Sim.TEMPO, "Patient keeps the ball; fast gets it forward early and loses it more"],
+			["press", "Without the ball", Sim.PRESS, "Pressing high wins it back sooner, and empties the legs"]]:
+		var key: String = row[0]
+		v.add_child(_stepper(row[1], row[2][t[key]], t[key], row[2].size(), func(d):
+			t[key] = clampi(t[key] + d, 0, row[2].size() - 1)
+			_changed(), false))
+		v.add_child(UI.wrap(UI.label(row[3], 12, UI.MUTED), 2))
+	var prep := []
+	if c.prep.att > 0:
+		prep.append("sharper going forward")
+	if c.prep.def > 0:
+		prep.append("tighter at the back")
+	if c.prep.sp > 0:
+		prep.append("dangerous from set pieces")
+	var p := UI.panel(14)
+	var pv := UI.vbox(4)
+	pv.add_child(UI.cap("This week's preparation", UI.ACCENT))
+	pv.add_child(UI.wrap(UI.label("Nothing yet. Training and a scouting report shape how the team plays on Saturday." if prep.is_empty() else "For Saturday the team is %s." % ", ".join(prep), 13, UI.TEXT), 3, true))
+	p.add_child(pv)
+	v.add_child(p)
+	root.add_child(UI.pad(v, 16, 4, 16, 0))
 
 func _title(a: String, b: String) -> Control:
 	var hb := UI.hbox(8)

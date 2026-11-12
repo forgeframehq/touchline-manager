@@ -4,16 +4,18 @@ extends Screen
 func build() -> void:
 	root.add_child(UI.spacer(true))
 	var mark := UI.vbox(0)
-	mark.add_child(UI.centre(UI.cap("Forge Frame presents", UI.MUTED, 11)))
+	mark.add_child(UI.centre(UI.cap("Forge Frame", UI.MUTED, 11)))
 	mark.add_child(fixed_gap(14))
-	mark.add_child(UI.centre(UI.label("TOUCHLINE", 52, UI.TEXT, 700, "num")))
-	var m := UI.centre(UI.label("M A N A G E R", 20, UI.ACCENT, 700, "num"))
+	mark.add_child(UI.centre(UI.label("TOUCHLINE", 64, UI.TEXT, 800, "num")))
+	var m := UI.centre(UI.label("M A N A G E R", 22, UI.ACCENT, 700, "num"))
 	mark.add_child(m)
 	root.add_child(mark)
 	root.add_child(fixed_gap(28))
 	root.add_child(UI.pad(PitchMark.new(), 56, 0, 56, 0))
 	root.add_child(UI.spacer(true))
 	var has := Game.has_save() and Game.load_game()
+	if has:
+		UI.set_club(Game.my_club())
 	var v := UI.vbox(10)
 	if has:
 		var c: Dictionary = Game.career
@@ -26,13 +28,13 @@ func build() -> void:
 		t.add_child(UI.cap("Continue career"))
 		t.add_child(UI.clip(UI.label(club.name, 19, UI.TEXT, 700, "num")))
 		var fx = Sim.my_fixture(c)
-		var nxt := "Season finished" if fx == null else "Next: %s (%s)" % [Sim.club_name(c, fx.a if fx.home else fx.h), "H" if fx.home else "A"]
+		var nxt := "Season finished" if fx == null else "Next: %s (%s)" % [Sim.club_name(c, fx.opp), "H" if fx.home else "A"]
 		t.add_child(UI.clip(UI.label("%s · Week %d · %s" % [UI.season_label(c.season), c.week + 1, nxt], 12, UI.MUTED)))
 		hb.add_child(t)
 		p.add_child(hb)
 		v.add_child(p)
 		var go := UI.btn("Continue   →", "primary", 52, 16)
-		go.pressed.connect(func(): UI.nav.tab("office"))
+		go.pressed.connect(func(): UI.nav.tab("desk"))
 		v.add_child(go)
 		var n := UI.btn("New career", "ghost", 48)
 		n.pressed.connect(func(): UI.nav.go("new_career"))
@@ -43,7 +45,7 @@ func build() -> void:
 		v.add_child(n)
 	root.add_child(UI.pad(v, 16, 0, 16, 0))
 	root.add_child(fixed_gap(10))
-	root.add_child(UI.centre(UI.label("Godot build %s" % ProjectSettings.get_setting("application/config/version"), 11, UI.MUTED)))
+	root.add_child(UI.centre(UI.label("Build %s" % ProjectSettings.get_setting("application/config/version"), 11, UI.MUTED)))
 	root.add_child(fixed_gap(14))
 
 func fixed_gap(px: float) -> Control:

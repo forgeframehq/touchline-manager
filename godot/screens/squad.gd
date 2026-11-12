@@ -1,11 +1,11 @@
 extends Screen
 ## The squad as a dense table: four views, tap a column to sort, tap a player for his profile.
 
-const VIEWS := ["General", "Fitness", "Stats", "Value"]
+const VIEWS := ["General", "Mood", "Season", "Value"]
 const COLS := {
 	"General": [["AGE", "age"], ["POT", "pot"], ["OVR", "rating"]],
-	"Fitness": [["COND", "fitness"], ["MOR", "morale"], ["INJ", "injured"]],
-	"Stats": [["APPS", "seasonApps"], ["GLS", "seasonGoals"], ["CAREER", "goals"]],
+	"Mood": [["COND", "fitness"], ["MOR", "morale"], ["TRUST", "trust"]],
+	"Season": [["APPS", "seasonApps"], ["GLS", "seasonGoals"], ["AVG", "avg"]],
 	"Value": [["AGE", "age"], ["WAGE", "wage"], ["VALUE", "value"]],
 }
 var view := 0
@@ -28,7 +28,7 @@ func build() -> void:
 	var age := 0.0
 	for p in sq:
 		age += p.age
-	root.add_child(header("Squad", "First team · %d players · average age %.1f" % [sq.size(), age / maxi(1, sq.size())]))
+	root.add_child(header("Squad", "%d players · average age %.1f" % [sq.size(), age / maxi(1, sq.size())]))
 	root.add_child(UI.pad(UI.segments(VIEWS, view, func(i):
 		view = i
 		sort_key = ""
@@ -89,7 +89,7 @@ func build() -> void:
 		rebuild(), "Tap a column to sort · tap a player to open him"))
 
 func _val(p: Dictionary, key: String):
-	return Sim.value(p) if key == "value" else p[key]
+	return Sim.value(p) if key == "value" else Sim.avg_rating(p) if key == "avg" else p[key]
 
 func _hcell(text: String, key: String, w: float, right_side: bool) -> Control:
 	var on := key != "" and key == sort_key
@@ -117,9 +117,11 @@ func _cell(p: Dictionary, key: String) -> Control:
 		"morale":
 			text = str(int(round(p.morale)))
 			col = UI.cond_color(p.morale + 15)
-		"injured":
-			text = "%dw" % p.injured if p.injured > 0 else "–"
-			col = UI.BAD if p.injured > 0 else UI.MUTED
+		"trust":
+			text = str(int(round(p.trust)))
+			col = UI.cond_color(p.trust + 25)
+		"avg":
+			text = "%.1f" % Sim.avg_rating(p) if p.seasonApps > 0 else "–"
 		"wage":
 			text = "£%dk" % p.wage
 		"value":
